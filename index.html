@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CorbanPRO — CRM Correspondente Bancário</title>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:Inter,-apple-system,BlinkMacSystemFont,sans-serif;background:#f8fafc;}
+    input,select,textarea{font-family:inherit;}
+    ::-webkit-scrollbar{width:6px;height:6px;}
+    ::-webkit-scrollbar-track{background:#f1f5f9;}
+    ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px;}
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const {useState,useEffect,useRef}=React;
+
+    const PRODUCTS=["FGTS / Saque-Aniversário","Crédito CLT","Servidor Federal / SIAPE","Consignado INSS","Refinanciamento","Cartão Benefício"];
+    const BANKS=["Caixa","BMG","Itaú Consignado","Bradesco","Safra","Pan","C6 Consig","Banco do Brasil","Santander","Outro"];
+    const CONSULTANTS=["Consultor 1","Consultor 2","Consultor 3","Consultor 4","Consultor 5"];
+    const ORIGINS=["Instagram","Facebook","WhatsApp","Indicação","Google","TikTok","Tráfego Pago","Lista Fria","Ligação Ativa","Portabilidade","Cliente Antigo","Site","Outro"];
+    const FUNNEL=[
+      {id:"novo_lead",label:"🆕 Novo Lead",color:"#64748b"},
+      {id:"qualificacao",label:"🔍 Em Qualificação",color:"#3b82f6"},
+      {id:"aguardando_autorizacao",label:"⏳ Aguard. Autorização",color:"#f59e0b"},
+      {id:"autorizado",label:"✅ Autorizado",color:"#8b5cf6"},
+      {id:"consulta_realizada",label:"📊 Consulta Realizada",color:"#06b6d4"},
+      {id:"proposta_enviada",label:"📤 Proposta Enviada",color:"#f97316"},
+      {id:"aguardando_docs",label:"📄 Aguard. Documentos",color:"#eab308"},
+      {id:"digitacao",label:"⌨️ Em Digitação",color:"#6366f1"},
+      {id:"aguardando_banco",label:"🏦 Aguard. Banco",color:"#a855f7"},
+      {id:"aprovado_assinatura",label:"✍️ Aprovado/Assinatura",color:"#10b981"},
+      {id:"pago",label:"💰 Pago/Fechado",color:"#059669"},
+      {id:"retorno_futuro",label:"🔄 Retorno Futuro",color:"#0ea5e9"},
+      {id:"bloqueado",label:"🚫 Bloqueado",color:"#94a3b8"},
+      {id:"perdido",label:"❌ Perdido",color:"#ef4444"},
+    ];
+    const LOSS_REASONS=["Cliente não respondeu","Valor baixo","Taxa/parcela não agradou","Sem saldo FGTS","Sem margem CLT","Não autorizou banco","Não enviou documentos","Erro Caixa/app","Banco recusou","Cliente fechou com concorrente","Cliente achou que era golpe","Telefone inválido","Fora do perfil","Retornar no próximo mês","Outro"];
+    const QUICK_MSGS=[
+      {label:"Primeiro Atendimento",text:"Oi, tudo bem? 😊 Aqui é da CorbanPRO! Me confirma qual crédito você quer consultar hoje: FGTS, CLT ou servidor?"},
+      {label:"Pedido de Autorização",text:"Para consultar com segurança, preciso que você autorize os bancos no aplicativo. Assim que autorizar, me avise por aqui! 👍"},
+      {label:"Cliente Parado",text:"Oi! 👋 Passando para ver se você ainda tem interesse na simulação. Posso reconsultar para você?"},
+      {label:"Pedido de Documentos",text:"Ótimo! Para avançar preciso de: RG ou CNH, comprovante de residência e comprovante de renda. Pode me enviar por aqui? 📎"},
+      {label:"Proposta Aprovada",text:"🎉 Boa notícia! Sua proposta foi aprovada! Agora preciso que você assine o contrato. Vou te passar os detalhes!"},
+      {label:"Pós-Venda",text:"Seu contrato foi finalizado! ✅ Qualquer dúvida, fico à disposição. Obrigada pela confiança! 🙏"},
+    ];
+    const CHECKLIST_ITEMS=["Cliente autorizou consulta?","Cliente recebeu explicação clara?","Cliente confirmou interesse?","Dados conferidos?","Documento legível?","Proposta enviada sem promessa falsa?","Contrato assinado pelo próprio cliente?","Comprovante salvo?","Atendimento respeitou política?"];
+    const BOT_FLOW=[
+      {bot:"Olá! 👋 Seja bem-vindo ao CorbanPRO!\n\nSou o assistente virtual e vou te ajudar enquanto um consultor fica disponível.\n\nPrimeiro, me diz seu *nome completo*? 😊",field:"name"},
+      {bot:(d)=>`Prazer, *${d.name}*! 😊\n\nQual produto você tem interesse?\n\n1️⃣ FGTS / Saque-Aniversário\n2️⃣ Crédito CLT\n3️⃣ Servidor Federal / SIAPE\n4️⃣ Consignado INSS\n\nDigite o número:`,field:"product"},
+      {bot:"Ótimo! Para verificar as condições, me informa seu *CPF*? 🔒",field:"cpf"},
+      {bot:"Qual seu *salário líquido* aproximado? 💰",field:"salary"},
+      {bot:(d)=>`Perfeito! ✅\n\n📋 *Resumo:*\n👤 ${d.name}\n📦 ${d.product}\n🪪 CPF: ${d.cpf}\n💰 Salário: R$ ${d.salary}\n\nUm consultor irá te atender em instantes! ⏳`,field:null},
+    ];
+    const PRODUCT_MAP={"1":"FGTS / Saque-Aniversário","2":"Crédito CLT","3":"Servidor Federal / SIAPE","4":"Consignado INSS"};
+    const originColor={"Instagram":"#e1306c","Facebook":"#1877f2","WhatsApp":"#25d366","Indicação":"#f59e0b","Google":"#ea4335","TikTok":"#010101","Tráfego Pago":"#6366f1","Lista Fria":"#64748b","Ligação Ativa":"#8b5cf6","Portabilidade":"#0ea5e9","Cliente Antigo":"#f97316","Site":"#10b981","Outro":"#94a3b8"};
+    const fColor=(id)=>FUNNEL.find(f=>f.id===id)?.color||"#64748b";
+    const fLabel=(id)=>FUNNEL.find(f=>f.id===id)?.label||id;
+
+    function useStorage(key,def){
+      const[val,setVal]=useState(()=>{try{const s=localStorage.getItem(key);return s?JSON.parse(s):def;}catch{return def;}});
+      useEffect(()=>{try{localStorage.setItem(key,JSON.stringify(val));}catch{}},[key,val]);
+      return[val,setVal];
+    }
+
+    function timeAgo(ts){const d=Math.floor((Date.now()-ts)/1000);if(d<60)return`${d}s`;if(d<3600)return`${Math.floor(d/60)}min`;return`${Math.floor(d/3600)}h`;}
+
+    function BotChat({lead,onUpdate}){
+      const[input,setInput]=useState("");
+      const endRef=useRef(null);
+      useEffect(()=>endRef.current?.scrollIntoView({behavior:"smooth"}),[lead.messages]);
+      const send=()=>{
+        if(!input.trim()||lead.botStep>=BOT_FLOW.length)return;
+        const step=BOT_FLOW[lead.botStep];
+        let nd={...lead.data};
+        if(step.field==="product")nd.product=PRODUCT_MAP[input.trim()]||input.trim();
+        else if(step.field)nd[step.field]=input.trim();
+        const next=lead.botStep+1;
+        let botText="";
+        if(next<BOT_FLOW.length){const nb=BOT_FLOW[next].bot;botText=typeof nb==="function"?nb(nd):nb;}
+        const msgs=[...lead.messages,{from:"user",text:input.trim(),ts:Date.now()}];
+        if(botText)msgs.push({from:"bot",text:botText,ts:Date.now()+200});
+        onUpdate({...lead,messages:msgs,botStep:next,data:nd,status:next>=BOT_FLOW.length?"aguardando":"bot"});
+        setInput("");
+      };
+      return(
+        <div style={{display:"flex",flexDirection:"column",height:280}}>
+          <div style={{flex:1,overflowY:"auto",padding:"10px 14px",display:"flex",flexDirection:"column",gap:6,background:"#ece5dd"}}>
+            {lead.messages.map((m,i)=>(
+              <div key={i} style={{display:"flex",justifyContent:m.from==="bot"?"flex-start":"flex-end"}}>
+                <div style={{maxWidth:"80%",padding:"7px 11px",borderRadius:m.from==="bot"?"0 10px 10px 10px":"10px 0 10px 10px",background:m.from==="bot"?"white":"#dcf8c6",fontSize:12,lineHeight:1.5,boxShadow:"0 1px 2px rgba(0,0,0,0.1)",whiteSpace:"pre-wrap"}}>
+                  {m.from==="bot"&&<div style={{fontSize:10,color:"#25d366",fontWeight:700,marginBottom:2}}>🤖 CorbanPRO Bot</div>}
+                  {m.text}
+                </div>
+              </div>
+            ))}
+            <div ref={endRef}/>
+          </div>
+          {lead.status==="bot"&&<div style={{padding:8,background:"#f0f0f0",display:"flex",gap:6}}>
+            <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="Simular resposta do cliente..." style={{flex:1,border:"1px solid #ddd",borderRadius:20,padding:"6px 12px",fontSize:12,outline:"none"}}/>
+            <button onClick={send} style={{background:"#25d366",border:"none",borderRadius:"50%",width:32,height:32,color:"white",cursor:"pointer",fontSize:14}}>➤</button>
+          </div>}
+          {lead.status==="aguardando"&&<div style={{padding:8,background:"#fff3cd",textAlign:"center",fontSize:12,color:"#856404",fontWeight:600}}>⏳ Aguardando consultor...</div>}
+          {lead.status==="atendendo"&&<div style={{padding:8,background:"#d1fae5",textAlign:"center",fontSize:12,color:"#065f46",fontWeight:600}}>✅ Em atendimento com {lead.consultant}</div>}
+        </div>
+      );
+    }
+
+    function App(){
+      const[tab,setTab]=useState("dashboard");
+      const[clients,setClients]=useStorage("cp_clients",[]);
+      const[proposals,setProposals]=useStorage("cp_proposals",[]);
+      const[commissions,setCommissions]=useStorage("cp_commissions",[]);
+      const[agenda,setAgenda]=useStorage("cp_agenda",[]);
+      const[queue,setQueue]=useStorage("cp_queue",[]);
+      const[quickMsgs,setQuickMsgs]=useStorage("cp_quickmsgs",QUICK_MSGS);
+      const[zapiConfig,setZapiConfig]=useStorage("cp_zapi",{instanceId:"",token:"",phone:"",connected:false});
+      const[zapiLogs,setZapiLogs]=useStorage("cp_zapilogs",[]);
+      const[consultant,setConsultant]=useStorage("cp_consultant","Consultor 1");
+      const[showForm,setShowForm]=useState(null);
+      const[search,setSearch]=useState("");
+      const[filterStatus,setFilterStatus]=useState("all");
+      const[lossModal,setLossModal]=useState(null);
+      const[lossReason,setLossReason]=useState("");
+      const[expandedLead,setExpandedLead]=useState(null);
+      const[newLeadPhone,setNewLeadPhone]=useState("");
+      const[selectedProposal,setSelectedProposal]=useState(null);
+      const[aiMode,setAiMode]=useState("message");
+      const[aiProduct,setAiProduct]=useState(PRODUCTS[0]);
+      const[aiClientName,setAiClientName]=useState("");
+      const[aiInput,setAiInput]=useState("");
+      const[aiResponse,setAiResponse]=useState("");
+      const[aiLoading,setAiLoading]=useState(false);
+      const[zapiStatus,setZapiStatus]=useState(null);
+      const[zapiQR,setZapiQR]=useState(null);
+      const[activeQuickMsg,setActiveQuickMsg]=useState(null);
+      const[qmf,setQmf]=useState({label:"",text:""});
+
+      const today=new Date().toISOString().split("T")[0];
+      const inpS={width:"100%",border:"1px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontSize:13,outline:"none",boxSizing:"border-box",background:"white",fontFamily:"inherit"};
+      const btn=(bg,c="#fff",extra={})=>({background:bg,color:c,border:"none",borderRadius:8,padding:"8px 14px",fontSize:13,fontWeight:600,cursor:"pointer",...extra});
+      const card={background:"white",borderRadius:12,padding:16,boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:"1px solid #f1f5f9"};
+      const tag=(bg)=>({background:bg+"25",color:bg,borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:700});
+      const lbl={fontSize:12,color:"#64748b",marginBottom:4,display:"block"};
+      const FF=({label,children})=>React.createElement("div",null,React.createElement("span",{style:lbl},label),children);
+
+      const emptyC={name:"",cpf:"",dob:"",phone:"",phone2:"",email:"",city:"",product:PRODUCTS[0],bank:"",origin:"Instagram",status:"novo_lead",preApproved:"",requested:"",released:"",lastConsult:"",returnDate:"",consultant,notes:"",salary:"",margin:""};
+      const emptyP={clientId:"",product:PRODUCTS[0],bank:"",value:"",installments:"",rate:"",status:"novo_lead",commission:"",consultant,lossReason:"",checklist:{}};
+      const emptyA={clientId:"",date:"",time:"",type:"Follow-up",notes:"",done:false,consultant};
+
+      const[cf,setCf]=useState(emptyC);
+      const[pf,setPf]=useState(emptyP);
+      const[af,setAf]=useState(emptyA);
+      const[cmf,setCmf]=useState({proposalId:"",expected:"",received:"",status:"Pendente",date:""});
+
+      const saveClient=()=>{
+        if(!cf.name||!cf.cpf)return alert("Nome e CPF obrigatórios");
+        if(cf.id)setClients(p=>p.map(c=>c.id===cf.id?{...cf}:c));
+        else setClients(p=>[...p,{...cf,id:Date.now(),createdAt:new Date().toLocaleDateString("pt-BR")}]);
+        setCf(emptyC);setShowForm(null);
+      };
+      const saveProposal=()=>{
+        if(!pf.clientId)return alert("Selecione um cliente");
+        setProposals(p=>[...p,{...pf,id:Date.now(),createdAt:new Date().toLocaleDateString("pt-BR")}]);
+        setPf(emptyP);setShowForm(null);
+      };
+      const saveAgenda=()=>{
+        if(!af.date)return alert("Data obrigatória");
+        setAgenda(p=>[...p,{...af,id:Date.now()}]);
+        setAf(emptyA);setShowForm(null);
+      };
+      const saveComm=()=>{
+        setCommissions(p=>[...p,{...cmf,id:Date.now()}]);
+        setCmf({proposalId:"",expected:"",received:"",status:"Pendente",date:""});setShowForm(null);
+      };
+
+      const updateProposalStatus=(id,status)=>{
+        if(status==="perdido"){setLossModal(id);return;}
+        setProposals(p=>p.map(x=>x.id===id?{...x,status}:x));
+      };
+      const confirmLoss=()=>{
+        if(!lossReason)return alert("Selecione o motivo");
+        setProposals(p=>p.map(x=>x.id===lossModal?{...x,status:"perdido",lossReason}:x));
+        setLossModal(null);setLossReason("");
+      };
+
+      const addToQueue=()=>{
+        const phone=newLeadPhone.trim();
+        if(!phone)return alert("Informe o número");
+        const b=BOT_FLOW[0];const bt=typeof b.bot==="function"?b.bot({}):b.bot;
+        setQueue(p=>[{id:Date.now(),phone,status:"bot",botStep:0,data:{},consultant:"",createdAt:Date.now(),messages:[{from:"bot",text:bt,ts:Date.now()}]},...p]);
+        setNewLeadPhone("");
+      };
+      const updateLead=(upd)=>setQueue(p=>p.map(l=>l.id===upd.id?upd:l));
+      const assumeLead=(lead)=>{
+        updateLead({...lead,status:"atendendo",consultant});
+        if(lead.data.name&&lead.data.cpf&&!clients.find(c=>c.cpf===lead.data.cpf)){
+          setClients(p=>[...p,{...emptyC,id:Date.now(),name:lead.data.name,cpf:lead.data.cpf,phone:lead.phone,product:lead.data.product||PRODUCTS[0],salary:lead.data.salary||"",origin:"WhatsApp",consultant,notes:"Via fila WhatsApp",createdAt:new Date().toLocaleDateString("pt-BR")}]);
+        }
+      };
+
+      const openWA=(client,msg="")=>{
+        const tpls={"FGTS / Saque-Aniversário":(n)=>`Olá ${n}! 👋 Você pode antecipar seu *FGTS* hoje mesmo! Me manda seu CPF! 🚀`,"Crédito CLT":(n)=>`Olá ${n}! 😊 Tem crédito disponível pelo *Consignado CLT*! Taxa a partir de 1,8% a.m. Quer simular? 👇`,"Servidor Federal / SIAPE":(n)=>`Olá ${n}! Acesso ao *Consignado SIAPE* com as melhores taxas! A partir de 1,5% a.m. Vamos simular? 😊`};
+        const fn=tpls[client.product]||(n=>`Olá ${n}! Posso te ajudar com crédito? 😊`);
+        const m=msg||fn(client.name.split(" ")[0]);
+        window.open(`https://wa.me/55${client.phone.replace(/\D/g,"")}?text=${encodeURIComponent(m)}`,"_blank");
+      };
+
+      const callAI=async()=>{
+        setAiLoading(true);setAiResponse("");
+        let prompt="";
+        if(aiMode==="message")prompt=`Você é especialista em crédito consignado. Crie uma mensagem de WhatsApp persuasiva para o produto ${aiProduct} para ${aiClientName||"cliente"}. Contexto: ${aiInput||"abordagem inicial"}. Máximo 150 palavras.`;
+        else if(aiMode==="objection")prompt=`Especialista em vendas de crédito. O cliente disse: "${aiInput}". Crie resposta de contorno de objeção empática. Produto: ${aiProduct}. Máximo 100 palavras.`;
+        else if(aiMode==="summary"){const c=clients.find(x=>String(x.id)===aiInput);if(!c){setAiResponse("Cliente não encontrado.");setAiLoading(false);return;}prompt=`Resumo executivo do cliente:\nNome: ${c.name}\nProduto: ${c.product}\nSalário: R$ ${c.salary}\nMargem: R$ ${c.margin}\nStatus: ${fLabel(c.status)}\nNotas: ${c.notes}\nDestaque oportunidades. Máximo 120 palavras.`;}
+        try{
+          const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,messages:[{role:"user",content:prompt}]})});
+          const data=await res.json();
+          setAiResponse(data.content?.[0]?.text||"Erro ao gerar.");
+        }catch{setAiResponse("Erro de conexão.");}
+        setAiLoading(false);
+      };
+
+      const todayAgenda=agenda.filter(a=>a.date===today&&!a.done);
+      const waitingQ=queue.filter(l=>l.status==="aguardando").length;
+      const totalComm=commissions.reduce((s,c)=>s+(parseFloat(c.received)||0),0);
+      const pendComm=commissions.filter(c=>c.status==="Pendente").reduce((s,c)=>s+(parseFloat(c.expected)||0),0);
+      const totalReleased=proposals.filter(p=>p.status==="pago").reduce((s,p)=>s+(parseFloat(p.value)||0),0);
+      const hotProposals=proposals.filter(p=>["proposta_enviada","aprovado_assinatura","digitacao"].includes(p.status));
+      const pendingDocs=proposals.filter(p=>p.status==="aguardando_docs");
+      const filteredClients=clients.filter(c=>{
+        const ms=c.name.toLowerCase().includes(search.toLowerCase())||c.cpf.includes(search)||c.phone.includes(search);
+        const mst=filterStatus==="all"||c.status===filterStatus;
+        return ms&&mst;
+      });
+
+      const TABS=[
+        {id:"dashboard",label:"📊 Dashboard"},
+        {id:"queue",label:`💬 Fila${waitingQ>0?` (${waitingQ})`:""}`},
+        {id:"clients",label:"👥 Clientes"},
+        {id:"funnel",label:"📋 Funil"},
+        {id:"proposals",label:"📝 Propostas"},
+        {id:"commissions",label:"💰 Comissões"},
+        {id:"agenda",label:"📅 Agenda"},
+        {id:"quickmsgs",label:"⚡ Respostas"},
+        {id:"ai",label:"🤖 IA"},
+        {id:"reports",label:"📈 Relatórios"},
+      ];
+
+      return(
+        <div style={{fontFamily:"Inter,sans-serif",background:"#f8fafc",minHeight:"100vh"}}>
+          {/* HEADER */}
+          <div style={{background:"linear-gradient(135deg,#1e3a8a,#2563eb)",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <div style={{width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:15,color:"white",border:"1.5px solid rgba(255,255,255,0.3)"}}>CP</div>
+              <div>
+                <div style={{color:"white",fontWeight:800,fontSize:17}}>Corban<span style={{color:"#60a5fa"}}>PRO</span></div>
+                <div style={{color:"#bfdbfe",fontSize:11}}>CRM para Correspondente Bancário</div>
+              </div>
+            </div>
+            <select value={consultant} onChange={e=>setConsultant(e.target.value)} style={{background:"rgba(255,255,255,0.15)",border:"1px solid rgba(255,255,255,0.3)",borderRadius:8,color:"white",padding:"6px 10px",fontSize:12,cursor:"pointer"}}>
+              {CONSULTANTS.map(c=><option key={c} value={c} style={{color:"#1e293b"}}>{c}</option>)}
+            </select>
+          </div>
+
+          {/* TABS */}
+          <div style={{background:"white",borderBottom:"1px solid #e2e8f0",display:"flex",overflowX:"auto",padding:"0 12px"}}>
+            {TABS.map(t=>(
+              <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"11px 12px",border:"none",background:"none",cursor:"pointer",fontSize:12,fontWeight:tab===t.id?700:400,color:tab===t.id?"#2563eb":"#64748b",borderBottom:tab===t.id?"2px solid #2563eb":"2px solid transparent",whiteSpace:"nowrap"}}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          <div style={{padding:16,maxWidth:1200,margin:"0 auto"}}>
+
+            {/* DASHBOARD */}
+            {tab==="dashboard"&&(
+              <div>
+                {waitingQ>0&&<div style={{background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:10,padding:12,marginBottom:16,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <span style={{color:"#c2410c",fontWeight:600}}>🔔 {waitingQ} cliente(s) aguardando na fila!</span>
+                  <button onClick={()=>setTab("queue")} style={btn("#ea580c")}>Ver Fila →</button>
+                </div>}
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginBottom:20}}>
+                  {[
+                    {label:"Total Clientes",value:clients.length,icon:"👥",color:"#3b82f6"},
+                    {label:"Fila WA",value:waitingQ,icon:"💬",color:"#25d366"},
+                    {label:"Propostas Quentes",value:hotProposals.length,icon:"🔥",color:"#f97316"},
+                    {label:"Pend. Documentos",value:pendingDocs.length,icon:"📄",color:"#eab308"},
+                    {label:"Valor Liberado",value:`R$ ${totalReleased.toLocaleString("pt-BR",{minimumFractionDigits:2})}`,icon:"💰",color:"#059669"},
+                    {label:"A Receber",value:`R$ ${pendComm.toLocaleString("pt-BR",{minimumFractionDigits:2})}`,icon:"⏳",color:"#8b5cf6"},
+                    {label:"Tarefas Hoje",value:todayAgenda.length,icon:"📅",color:"#ef4444"},
+                  ].map(m=>(
+                    <div key={m.label} style={{...card,borderLeft:`4px solid ${m.color}`,padding:14}}>
+                      <div style={{fontSize:22,marginBottom:2}}>{m.icon}</div>
+                      <div style={{fontSize:18,fontWeight:800,color:m.color}}>{m.value}</div>
+                      <div style={{fontSize:11,color:"#64748b"}}>{m.label}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+                  <div style={card}>
+                    <div style={{fontWeight:700,marginBottom:12}}>📣 Origem dos Leads</div>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                      {ORIGINS.map(o=>{const count=clients.filter(c=>c.origin===o).length;if(!count)return null;return<div key={o} style={{background:(originColor[o]||"#94a3b8")+"18",borderLeft:`3px solid ${originColor[o]||"#94a3b8"}`,borderRadius:6,padding:"6px 10px",minWidth:80}}><div style={{fontSize:11,fontWeight:700,color:originColor[o]||"#64748b"}}>{o}</div><div style={{fontSize:18,fontWeight:800}}>{count}</div></div>;})}
+                      {clients.length===0&&<span style={{color:"#94a3b8",fontSize:13}}>Sem dados ainda.</span>}
+                    </div>
+                  </div>
+                  <div style={card}>
+                    <div style={{fontWeight:700,marginBottom:12}}>📋 Funil Resumido</div>
+                    {FUNNEL.slice(0,8).map(f=>{const count=proposals.filter(p=>p.status===f.id).length;return<div key={f.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:5}}><div style={{width:8,height:8,borderRadius:"50%",background:f.color}}/><div style={{fontSize:12,flex:1}}>{f.label}</div><div style={{fontWeight:700,fontSize:13,color:f.color}}>{count}</div></div>;})}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* FILA */}
+            {tab==="queue"&&(
+              <div>
+                <div style={{...card,marginBottom:14}}>
+                  <div style={{fontWeight:700,marginBottom:10}}>➕ Novo Lead</div>
+                  <div style={{display:"flex",gap:10}}>
+                    <input value={newLeadPhone} onChange={e=>setNewLeadPhone(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addToQueue()} placeholder="Número WhatsApp com DDD" style={{...inpS,flex:1}}/>
+                    <button onClick={addToQueue} style={btn("#25d366")}>+ Adicionar</button>
+                  </div>
+                </div>
+                <div style={{display:"grid",gap:10}}>
+                  {queue.map(lead=>{
+                    const sc={"bot":"#3b82f6","aguardando":"#f59e0b","atendendo":"#10b981"}[lead.status];
+                    const sl={"bot":"🤖 Bot ativo","aguardando":"⏳ Aguardando","atendendo":"✅ Atendendo"}[lead.status];
+                    const isExp=expandedLead===lead.id;
+                    return<div key={lead.id} style={{...card,padding:0,overflow:"hidden",border:`1px solid ${sc}30`}}>
+                      <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",cursor:"pointer"}} onClick={()=>setExpandedLead(isExp?null:lead.id)}>
+                        <div style={{width:38,height:38,borderRadius:"50%",background:"#dcfce7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>📱</div>
+                        <div style={{flex:1}}>
+                          <div style={{fontWeight:700}}>{lead.data.name||lead.phone}</div>
+                          <div style={{fontSize:11,color:"#64748b"}}>{lead.phone} · {timeAgo(lead.createdAt)} atrás</div>
+                        </div>
+                        <span style={{...tag(sc),padding:"4px 10px",fontSize:12}}>{sl}</span>
+                        <span style={{color:"#94a3b8"}}>{isExp?"▲":"▼"}</span>
+                      </div>
+                      {isExp&&<div>
+                        <BotChat lead={lead} onUpdate={updateLead}/>
+                        <div style={{display:"flex",gap:8,padding:10,background:"#f8fafc",borderTop:"1px solid #e2e8f0"}}>
+                          {lead.status==="aguardando"&&<button onClick={()=>assumeLead(lead)} style={{...btn("#2563eb"),flex:1}}>🙋 Assumir Atendimento</button>}
+                          {lead.status==="atendendo"&&<div style={{flex:1,background:"#d1fae5",borderRadius:8,padding:"8px",fontSize:13,fontWeight:600,color:"#065f46",textAlign:"center"}}>Atendendo: {lead.consultant}</div>}
+                          <button onClick={()=>{if(confirm("Encerrar?"))setQueue(p=>p.filter(l=>l.id!==lead.id));}} style={btn("#fee2e2","#ef4444")}>✕</button>
+                        </div>
+                      </div>}
+                    </div>;
+                  })}
+                  {queue.length===0&&<div style={{textAlign:"center",color:"#94a3b8",padding:40}}>Nenhum lead na fila.</div>}
+                </div>
+              </div>
+            )}
+
+            {/* CLIENTES */}
+            {tab==="clients"&&(
+              <div>
+                <div style={{display:"flex",gap:10,marginBottom:14,flexWrap:"wrap"}}>
+                  <input placeholder="🔍 Buscar..." value={search} onChange={e=>setSearch(e.target.value)} style={{...inpS,flex:1,minWidth:180}}/>
+                  <select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)} style={{...inpS,width:"auto"}}>
+                    <option value="all">Todos os status</option>
+                    {FUNNEL.map(f=><option key={f.id} value={f.id}>{f.label}</option>)}
+                  </select>
+                  <button onClick={()=>{setCf(emptyC);setShowForm("client");}} style={btn("#2563eb")}>+ Novo Cliente</button>
+                </div>
+                {showForm==="client"&&(
+                  <div style={{...card,marginBottom:14}}>
+                    <div style={{fontWeight:700,marginBottom:12}}>{cf.id?"Editar":"Novo"} Cliente</div>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(190px,1fr))",gap:10}}>
+                      <FF label="Nome completo *"><input value={cf.name} onChange={e=>setCf(p=>({...p,name:e.target.value}))} style={inpS}/></FF>
+                      <FF label="CPF *"><input value={cf.cpf} onChange={e=>setCf(p=>({...p,cpf:e.target.value}))} style={inpS}/></FF>
+                      <FF label="WhatsApp"><input value={cf.phone} onChange={e=>setCf(p=>({...p,phone:e.target.value}))} style={inpS}/></FF>
+                      <FF label="Telefone 2"><input value={cf.phone2} onChange={e=>setCf(p=>({...p,phone2:e.target.value}))} style={inpS}/></FF>
+                      <FF label="E-mail"><input value={cf.email} onChange={e=>setCf(p=>({...p,email:e.target.value}))} style={inpS}/></FF>
+                      <FF label="Cidade/Estado"><input value={cf.city} onChange={e=>setCf(p=>({...p,city:e.target.value}))} style={inpS}/></FF>
+                      <FF label="Produto"><select value={cf.product} onChange={e=>setCf(p=>({...p,product:e.target.value}))} style={inpS}>{PRODUCTS.map(x=><option key={x}>{x}</option>)}</select></FF>
+                      <FF label="Banco"><select value={cf.bank} onChange={e=>setCf(p=>({...p,bank:e.target.value}))} style={inpS}><option value="">Selecione...</option>{BANKS.map(x=><option key={x}>{x}</option>)}</select></FF>
+                      <FF label="Origem"><select value={cf.origin} onChange={e=>setCf(p=>({...p,origin:e.target.value}))} style={inpS}>{ORIGINS.map(x=><option key={x}>{x}</option>)}</select></FF>
+                      <FF label="Status"><select value={cf.status} onChange={e=>setCf(p=>({...p,status:e.target.value}))} style={inpS}>{FUNNEL.map(f=><option key={f.id} value={f.id}>{f.label}</option>)}</select></FF>
+                      <FF label="Salário (R$)"><input type="number" value={cf.salary} onChange={e=>setCf(p=>({...p,salary:e.target.value}))} style={inpS}/></FF>
+                      <FF label="Margem (R$)"><input type="number" value={cf.margin} onChange={e=>setCf(p=>({...p,margin:e.target.value}))} style={inpS}/></FF>
+                      <FF label="Pré-aprovado (R$)"><input type="number" value={cf.preApproved} onChange={e=>setCf(p=>({...p,preApproved:e.target.value}))} style={inpS}/></FF>
+                      <FF label="Data de Retorno"><input type="date" value={cf.returnDate} onChange={e=>setCf(p=>({...p,returnDate:e.target.value}))} style={inpS}/></FF>
+                      <FF label="Consultor"><select value={cf.consultant} onChange={e=>setCf(p=>({...p,consultant:e.target.value}))} style={inpS}>{CONSULTANTS.map(x=><option key={x}>{x}</option>)}</select></FF>
+                      <div style={{gridColumn:"1/-1"}}><FF label="Observações"><textarea value={cf.notes} onChange={e=>setCf(p=>({...p,notes:e.target.value}))} style={{...inpS,height:60,resize:"vertical"}}/></FF></div>
+                    </div>
+                    <div style={{display:"flex",gap:8,marginTop:12}}>
+                      <button onClick={saveClient} style={btn("#10b981")}>💾 Salvar</button>
+                      <button onClick={()=>{setShowForm(null);setCf(emptyC);}} style={btn("#f1f5f9","#64748b")}>Cancelar</button>
+                    </div>
+                  </div>
+                )}
+                <div style={{display:"grid",gap:14}}>
+                  {filteredClients.map(c=>{
+                    const cp=proposals.filter(p=>String(p.clientId)===String(c.id));
+                    const lp=cp[cp.length-1];
+                    const isOD=c.returnDate&&c.returnDate<today;
+                    const isT=c.returnDate===today;
+                    return<div key={c.id} style={{background:"white",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.07)",border:"1px solid #f1f5f9"}}>
+                      <div style={{height:4,background:fColor(c.status)}}/>
+                      <div style={{padding:16}}>
+                        <div style={{display:"flex",alignItems:"flex-start",gap:14,marginBottom:12}}>
+                          <div style={{width:50,height:50,borderRadius:14,background:`linear-gradient(135deg,${fColor(c.status)},${fColor(c.status)}99)`,display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontWeight:800,fontSize:20,flexShrink:0}}>{c.name[0].toUpperCase()}</div>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:3}}>
+                              <div style={{fontWeight:800,fontSize:15,color:"#0f172a"}}>{c.name}</div>
+                              {c.returnDate&&<span style={{background:isOD?"#fee2e2":isT?"#fef3c7":"#eff6ff",color:isOD?"#ef4444":isT?"#f59e0b":"#3b82f6",borderRadius:6,padding:"2px 8px",fontSize:10,fontWeight:700}}>{isOD?"⚠️ Atrasado":isT?"🔔 Hoje":`📅 ${c.returnDate}`}</span>}
+                            </div>
+                            <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:6}}>
+                              {c.cpf&&<span style={{fontSize:12,color:"#64748b"}}>🪪 {c.cpf}</span>}
+                              {c.phone&&<span style={{fontSize:12,color:"#64748b"}}>📱 {c.phone}</span>}
+                              {c.city&&<span style={{fontSize:12,color:"#64748b"}}>📍 {c.city}</span>}
+                            </div>
+                            <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                              <span style={{...tag(fColor(c.status)),padding:"2px 8px",fontSize:10}}>{fLabel(c.status)}</span>
+                              <span style={{...tag(originColor[c.origin]||"#94a3b8"),padding:"2px 8px",fontSize:10}}>📣 {c.origin}</span>
+                              <span style={{background:"#f1f5f9",color:"#475569",borderRadius:20,padding:"2px 8px",fontSize:10,fontWeight:600}}>{c.product}</span>
+                            </div>
+                          </div>
+                          <div style={{display:"flex",gap:6,flexShrink:0,flexWrap:"wrap"}}>
+                            {c.phone&&<button onClick={()=>openWA(c)} style={{...btn("#25d366"),padding:"6px 10px",fontSize:11}}>📱 WA</button>}
+                            <button onClick={()=>{setCf({...c});setShowForm("client");}} style={{...btn("#eff6ff","#2563eb"),padding:"6px 10px",fontSize:11}}>✏️</button>
+                            <button onClick={()=>{setPf({...emptyP,clientId:String(c.id),product:c.product});setShowForm("proposal");setTab("proposals");}} style={{...btn("#f5f3ff","#7c3aed"),padding:"6px 10px",fontSize:11}}>+ Proposta</button>
+                            <button onClick={()=>{if(confirm("Excluir?"))setClients(p=>p.filter(x=>x.id!==c.id));}} style={{...btn("#fff1f2","#e11d48"),padding:"6px 8px",fontSize:11}}>🗑</button>
+                          </div>
+                        </div>
+                        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:8,marginBottom:lp||c.notes?10:0}}>
+                          {[["💼 Salário",c.salary?`R$ ${parseFloat(c.salary).toLocaleString("pt-BR")}`:"—","#64748b"],["📊 Margem",c.margin?`R$ ${parseFloat(c.margin).toLocaleString("pt-BR")}`:"—","#3b82f6"],["✅ Pré-aprovado",c.preApproved?`R$ ${parseFloat(c.preApproved).toLocaleString("pt-BR")}`:"—","#10b981"],["📋 Propostas",cp.length,"#6366f1"]].map(([l,v,col])=>(
+                            <div key={l} style={{background:"#f8fafc",borderRadius:10,padding:"7px 10px",borderLeft:`3px solid ${col}`}}>
+                              <div style={{fontSize:10,color:"#94a3b8",marginBottom:1}}>{l}</div>
+                              <div style={{fontSize:13,fontWeight:700,color:v==="—"?"#cbd5e1":col}}>{v}</div>
+                            </div>
+                          ))}
+                        </div>
+                        {lp&&<div style={{background:"#f8fafc",borderRadius:10,padding:"7px 12px",marginBottom:c.notes?8:0,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                          <div style={{width:6,height:6,borderRadius:"50%",background:fColor(lp.status)}}/>
+                          <span style={{fontSize:11,color:"#64748b",fontWeight:600}}>Última proposta:</span>
+                          <span style={{fontSize:11}}>{lp.bank} · {lp.product}</span>
+                          {lp.value&&<span style={{fontSize:11,fontWeight:700,color:"#10b981"}}>R$ {parseFloat(lp.value).toLocaleString("pt-BR")}</span>}
+                          <span style={{...tag(fColor(lp.status)),padding:"2px 8px",fontSize:10,marginLeft:"auto"}}>{fLabel(lp.status)}</span>
+                        </div>}
+                        {c.notes&&<div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:10,padding:"7px 10px",fontSize:12,color:"#92400e"}}>📝 {c.notes}</div>}
+                      </div>
+                    </div>;
+                  })}
+                  {filteredClients.length===0&&<div style={{textAlign:"center",color:"#94a3b8",padding:40}}>Nenhum cliente encontrado.</div>}
+                </div>
+              </div>
+            )}
+
+            {/* FUNIL */}
+            {tab==="funnel"&&(
+              <div style={{overflowX:"auto"}}>
+                <div style={{display:"flex",gap:10,minWidth:"max-content",paddingBottom:8}}>
+                  {FUNNEL.map(f=>{
+                    const items=proposals.filter(p=>p.status===f.id);
+                    return<div key={f.id} style={{minWidth:180,background:"#f8fafc",borderRadius:12,padding:10,border:`1px solid ${f.color}30`}}>
+                      <div style={{fontSize:12,fontWeight:700,color:f.color,marginBottom:8,display:"flex",justifyContent:"space-between"}}><span>{f.label}</span><span style={{background:f.color+"20",borderRadius:10,padding:"1px 7px"}}>{items.length}</span></div>
+                      {items.map(p=>{const c=clients.find(x=>String(x.id)===String(p.clientId));return<div key={p.id} style={{background:"white",borderRadius:8,padding:8,marginBottom:6,boxShadow:"0 1px 3px rgba(0,0,0,0.08)",borderLeft:`3px solid ${f.color}`}}>
+                        <div style={{fontWeight:600,fontSize:12}}>{c?.name?.split(" ")[0]||"—"}</div>
+                        <div style={{fontSize:11,color:"#64748b"}}>{p.product}</div>
+                        {p.value&&<div style={{fontSize:12,fontWeight:700,color:"#10b981"}}>R$ {parseFloat(p.value).toLocaleString("pt-BR")}</div>}
+                      </div>;})}
+                      {items.length===0&&<div style={{color:"#cbd5e1",fontSize:12,textAlign:"center",padding:10}}>Vazio</div>}
+                    </div>;
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* PROPOSTAS */}
+            {tab==="proposals"&&(
+              <div>
+                <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
+                  <button onClick={()=>{setPf(emptyP);setShowForm("proposal");}} style={btn("#2563eb")}>+ Nova Proposta</button>
+                </div>
+                {showForm==="proposal"&&(
+                  <div style={{...card,marginBottom:14}}>
+                    <div style={{fontWeight:700,marginBottom:12}}>Nova Proposta</div>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10}}>
+                      <FF label="Cliente *"><select value={pf.clientId} onChange={e=>setPf(p=>({...p,clientId:e.target.value}))} style={inpS}><option value="">Selecione...</option>{clients.map(c=><option key={c.id} value={String(c.id)}>{c.name}</option>)}</select></FF>
+                      <FF label="Produto"><select value={pf.product} onChange={e=>setPf(p=>({...p,product:e.target.value}))} style={inpS}>{PRODUCTS.map(x=><option key={x}>{x}</option>)}</select></FF>
+                      <FF label="Banco"><select value={pf.bank} onChange={e=>setPf(p=>({...p,bank:e.target.value}))} style={inpS}><option value="">Selecione...</option>{BANKS.map(x=><option key={x}>{x}</option>)}</select></FF>
+                      <FF label="Valor (R$)"><input type="number" value={pf.value} onChange={e=>setPf(p=>({...p,value:e.target.value}))} style={inpS}/></FF>
+                      <FF label="Parcelas"><input type="number" value={pf.installments} onChange={e=>setPf(p=>({...p,installments:e.target.value}))} style={inpS}/></FF>
+                      <FF label="Taxa (% a.m.)"><input type="number" value={pf.rate} onChange={e=>setPf(p=>({...p,rate:e.target.value}))} style={inpS}/></FF>
+                      <FF label="Comissão (R$)"><input type="number" value={pf.commission} onChange={e=>setPf(p=>({...p,commission:e.target.value}))} style={inpS}/></FF>
+                      <FF label="Status"><select value={pf.status} onChange={e=>setPf(p=>({...p,status:e.target.value}))} style={inpS}>{FUNNEL.map(f=><option key={f.id} value={f.id}>{f.label}</option>)}</select></FF>
+                    </div>
+                    <div style={{display:"flex",gap:8,marginTop:12}}>
+                      <button onClick={saveProposal} style={btn("#10b981")}>Salvar</button>
+                      <button onClick={()=>setShowForm(null)} style={btn("#f1f5f9","#64748b")}>Cancelar</button>
+                    </div>
+                  </div>
+                )}
+                {lossModal&&(
+                  <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
+                    <div style={{...card,maxWidth:400,width:"90%",padding:20}}>
+                      <div style={{fontWeight:700,marginBottom:12}}>❌ Motivo da Perda</div>
+                      <select value={lossReason} onChange={e=>setLossReason(e.target.value)} style={{...inpS,marginBottom:14}}>
+                        <option value="">Selecione...</option>
+                        {LOSS_REASONS.map(r=><option key={r}>{r}</option>)}
+                      </select>
+                      <div style={{display:"flex",gap:8}}>
+                        <button onClick={confirmLoss} style={btn("#ef4444")}>Confirmar</button>
+                        <button onClick={()=>setLossModal(null)} style={btn("#f1f5f9","#64748b")}>Cancelar</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div style={{display:"grid",gap:10}}>
+                  {proposals.map(p=>{
+                    const c=clients.find(x=>String(x.id)===String(p.clientId));
+                    const fc=fColor(p.status);
+                    const cd=CHECKLIST_ITEMS.filter(i=>p.checklist?.[i]).length;
+                    return<div key={p.id} style={{...card,borderLeft:`4px solid ${fc}`,padding:12}}>
+                      <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                        <div style={{flex:1,minWidth:160}}>
+                          <div style={{fontWeight:700}}>{c?.name||"—"}</div>
+                          <div style={{fontSize:11,color:"#64748b"}}>{p.product} · {p.bank} · {p.createdAt}</div>
+                          {p.lossReason&&<div style={{fontSize:11,color:"#ef4444"}}>Motivo: {p.lossReason}</div>}
+                        </div>
+                        {p.value&&<div><div style={{fontSize:10,color:"#94a3b8"}}>Valor</div><div style={{fontWeight:700}}>R$ {parseFloat(p.value).toLocaleString("pt-BR")}</div></div>}
+                        {p.commission&&<div><div style={{fontSize:10,color:"#94a3b8"}}>Comissão</div><div style={{fontWeight:700,color:"#f59e0b"}}>R$ {parseFloat(p.commission).toLocaleString("pt-BR")}</div></div>}
+                        <select value={p.status} onChange={e=>updateProposalStatus(p.id,e.target.value)} style={{border:`1px solid ${fc}`,borderRadius:6,padding:"4px 7px",fontSize:11,color:fc,fontWeight:600,background:fc+"15",cursor:"pointer"}}>
+                          {FUNNEL.map(f=><option key={f.id} value={f.id}>{f.label}</option>)}
+                        </select>
+                        <button onClick={()=>setSelectedProposal(selectedProposal?.id===p.id?null:p)} style={{...btn(cd===CHECKLIST_ITEMS.length?"#10b981":"#f59e0b"),padding:"5px 9px",fontSize:11}}>☑ {cd}/{CHECKLIST_ITEMS.length}</button>
+                        <button onClick={()=>{if(confirm("Excluir?"))setProposals(pr=>pr.filter(x=>x.id!==p.id));}} style={{...btn("#fee2e2","#ef4444"),padding:"5px 9px",fontSize:11}}>🗑</button>
+                      </div>
+                      {selectedProposal?.id===p.id&&(
+                        <div style={{marginTop:10,padding:10,background:"#f8fafc",borderRadius:8}}>
+                          <div style={{fontSize:12,fontWeight:700,marginBottom:8}}>☑ Checklist</div>
+                          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:5}}>
+                            {CHECKLIST_ITEMS.map(item=>(
+                              <label key={item} style={{display:"flex",alignItems:"center",gap:6,fontSize:12,cursor:"pointer"}}>
+                                <input type="checkbox" checked={!!p.checklist?.[item]} onChange={e=>setProposals(pr=>pr.map(x=>x.id===p.id?{...x,checklist:{...x.checklist,[item]:e.target.checked}}:x))} style={{width:14,height:14}}/>
+                                <span style={{color:p.checklist?.[item]?"#10b981":"#374151"}}>{item}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>;
+                  })}
+                  {proposals.length===0&&<div style={{textAlign:"center",color:"#94a3b8",padding:40}}>Nenhuma proposta.</div>}
+                </div>
+              </div>
+            )}
+
+            {/* COMISSÕES */}
+            {tab==="commissions"&&(
+              <div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:12,marginBottom:16}}>
+                  {[{l:"Recebido",v:`R$ ${totalComm.toLocaleString("pt-BR",{minimumFractionDigits:2})}`,c:"#10b981"},{l:"A Receber",v:`R$ ${pendComm.toLocaleString("pt-BR",{minimumFractionDigits:2})}`,c:"#f59e0b"},{l:"Total Liberado",v:`R$ ${totalReleased.toLocaleString("pt-BR",{minimumFractionDigits:2})}`,c:"#059669"}].map(m=>(
+                    <div key={m.l} style={{...card,borderLeft:`4px solid ${m.c}`,padding:14}}><div style={{fontSize:11,color:"#64748b"}}>{m.l}</div><div style={{fontSize:18,fontWeight:800,color:m.c}}>{m.v}</div></div>
+                  ))}
+                </div>
+                <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
+                  <button onClick={()=>setShowForm("comm")} style={btn("#2563eb")}>+ Registrar</button>
+                </div>
+                {showForm==="comm"&&(
+                  <div style={{...card,marginBottom:14}}>
+                    <div style={{fontWeight:700,marginBottom:12}}>Nova Comissão</div>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10}}>
+                      <FF label="Proposta"><select value={cmf.proposalId} onChange={e=>setCmf(p=>({...p,proposalId:e.target.value}))} style={inpS}><option value="">Selecione...</option>{proposals.map(p=>{const c=clients.find(x=>String(x.id)===String(p.clientId));return<option key={p.id} value={String(p.id)}>{c?.name} — {p.product}</option>;})}</select></FF>
+                      <FF label="Previsto (R$)"><input type="number" value={cmf.expected} onChange={e=>setCmf(p=>({...p,expected:e.target.value}))} style={inpS}/></FF>
+                      <FF label="Recebido (R$)"><input type="number" value={cmf.received} onChange={e=>setCmf(p=>({...p,received:e.target.value}))} style={inpS}/></FF>
+                      <FF label="Data"><input type="date" value={cmf.date} onChange={e=>setCmf(p=>({...p,date:e.target.value}))} style={inpS}/></FF>
+                      <FF label="Status"><select value={cmf.status} onChange={e=>setCmf(p=>({...p,status:e.target.value}))} style={inpS}>{["Pendente","Recebido","Cancelado"].map(x=><option key={x}>{x}</option>)}</select></FF>
+                    </div>
+                    <div style={{display:"flex",gap:8,marginTop:12}}>
+                      <button onClick={saveComm} style={btn("#10b981")}>Salvar</button>
+                      <button onClick={()=>setShowForm(null)} style={btn("#f1f5f9","#64748b")}>Cancelar</button>
+                    </div>
+                  </div>
+                )}
+                <div style={{display:"grid",gap:8}}>
+                  {commissions.map(c=>{
+                    const p=proposals.find(x=>String(x.id)===String(c.proposalId));
+                    const cl=clients.find(x=>String(x.id)===String(p?.clientId));
+                    const sc={Pendente:"#f59e0b",Recebido:"#10b981",Cancelado:"#ef4444"}[c.status];
+                    return<div key={c.id} style={{...card,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",padding:12}}>
+                      <div style={{flex:1}}><div style={{fontWeight:600}}>{cl?.name||"—"}</div><div style={{fontSize:11,color:"#64748b"}}>{p?.product} · {c.date}</div></div>
+                      <div><div style={{fontSize:10,color:"#94a3b8"}}>Previsto</div><div style={{fontWeight:600}}>R$ {parseFloat(c.expected||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</div></div>
+                      <div><div style={{fontSize:10,color:"#94a3b8"}}>Recebido</div><div style={{fontWeight:700,color:"#10b981"}}>R$ {parseFloat(c.received||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</div></div>
+                      <span style={{...tag(sc),padding:"4px 10px"}}>{c.status}</span>
+                    </div>;
+                  })}
+                  {commissions.length===0&&<div style={{textAlign:"center",color:"#94a3b8",padding:40}}>Nenhuma comissão.</div>}
+                </div>
+              </div>
+            )}
+
+            {/* AGENDA */}
+            {tab==="agenda"&&(
+              <div>
+                <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
+                  <button onClick={()=>{setAf(emptyA);setShowForm("agenda");}} style={btn("#2563eb")}>+ Nova Tarefa</button>
+                </div>
+                {showForm==="agenda"&&(
+                  <div style={{...card,marginBottom:14}}>
+                    <div style={{fontWeight:700,marginBottom:12}}>Nova Tarefa</div>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10}}>
+                      <FF label="Cliente"><select value={af.clientId} onChange={e=>setAf(p=>({...p,clientId:e.target.value}))} style={inpS}><option value="">Selecione...</option>{clients.map(c=><option key={c.id} value={String(c.id)}>{c.name}</option>)}</select></FF>
+                      <FF label="Tipo"><select value={af.type} onChange={e=>setAf(p=>({...p,type:e.target.value}))} style={inpS}>{["Follow-up","Ligar","Enviar proposta","Cobrar documentos","Reconsultar","Reativação","Outro"].map(x=><option key={x}>{x}</option>)}</select></FF>
+                      <FF label="Data *"><input type="date" value={af.date} onChange={e=>setAf(p=>({...p,date:e.target.value}))} style={inpS}/></FF>
+                      <FF label="Hora"><input type="time" value={af.time} onChange={e=>setAf(p=>({...p,time:e.target.value}))} style={inpS}/></FF>
+                      <div style={{gridColumn:"1/-1"}}><FF label="Observações"><input value={af.notes} onChange={e=>setAf(p=>({...p,notes:e.target.value}))} style={inpS}/></FF></div>
+                    </div>
+                    <div style={{display:"flex",gap:8,marginTop:12}}>
+                      <button onClick={saveAgenda} style={btn("#10b981")}>Salvar</button>
+                      <button onClick={()=>setShowForm(null)} style={btn("#f1f5f9","#64748b")}>Cancelar</button>
+                    </div>
+                  </div>
+                )}
+                <div style={{display:"grid",gap:8}}>
+                  {[...agenda].sort((a,b)=>a.date.localeCompare(b.date)).map(a=>{
+                    const c=clients.find(x=>String(x.id)===String(a.clientId));
+                    const isPast=a.date<today&&!a.done;
+                    const isT=a.date===today;
+                    return<div key={a.id} style={{...card,opacity:a.done?0.5:1,borderLeft:`4px solid ${a.done?"#94a3b8":isPast?"#ef4444":isT?"#f59e0b":"#3b82f6"}`,padding:12}}>
+                      <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                        <div style={{flex:1}}>
+                          <div style={{fontWeight:600,textDecoration:a.done?"line-through":"none"}}>{a.type}{c?` — ${c.name}`:""}</div>
+                          <div style={{fontSize:11,color:"#64748b"}}>{a.date}{a.time&&` às ${a.time}`}{isPast&&!a.done&&" ⚠️ Atrasado"}</div>
+                          {a.notes&&<div style={{fontSize:11,color:"#94a3b8"}}>{a.notes}</div>}
+                        </div>
+                        {c?.phone&&!a.done&&<button onClick={()=>openWA(c)} style={{...btn("#25d366"),padding:"5px 10px",fontSize:11}}>📱 WA</button>}
+                        <button onClick={()=>setAgenda(p=>p.map(x=>x.id===a.id?{...x,done:!x.done}:x))} style={{...btn(a.done?"#f1f5f9":"#10b981",a.done?"#64748b":"white"),padding:"5px 10px",fontSize:11}}>{a.done?"↩":"✓"}</button>
+                        <button onClick={()=>{if(confirm("Excluir?"))setAgenda(p=>p.filter(x=>x.id!==a.id));}} style={{...btn("#fee2e2","#ef4444"),padding:"5px 8px",fontSize:11}}>🗑</button>
+                      </div>
+                    </div>;
+                  })}
+                  {agenda.length===0&&<div style={{textAlign:"center",color:"#94a3b8",padding:40}}>Nenhuma tarefa.</div>}
+                </div>
+              </div>
+            )}
+
+            {/* RESPOSTAS RÁPIDAS */}
+            {tab==="quickmsgs"&&(
+              <div>
+                <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
+                  <button onClick={()=>setShowForm("quickmsg")} style={btn("#2563eb")}>+ Nova Resposta</button>
+                </div>
+                {showForm==="quickmsg"&&(
+                  <div style={{...card,marginBottom:14}}>
+                    <div style={{fontWeight:700,marginBottom:12}}>Nova Resposta Rápida</div>
+                    <FF label="Nome"><input value={qmf.label} onChange={e=>setQmf(p=>({...p,label:e.target.value}))} style={{...inpS,marginBottom:10}}/></FF>
+                    <FF label="Texto"><textarea value={qmf.text} onChange={e=>setQmf(p=>({...p,text:e.target.value}))} style={{...inpS,height:80,resize:"vertical"}}/></FF>
+                    <div style={{display:"flex",gap:8,marginTop:12}}>
+                      <button onClick={()=>{if(!qmf.label||!qmf.text)return alert("Preencha tudo");setQuickMsgs(p=>[...p,{...qmf}]);setQmf({label:"",text:""});setShowForm(null);}} style={btn("#10b981")}>Salvar</button>
+                      <button onClick={()=>setShowForm(null)} style={btn("#f1f5f9","#64748b")}>Cancelar</button>
+                    </div>
+                  </div>
+                )}
+                <div style={{display:"grid",gap:10}}>
+                  {quickMsgs.map((m,i)=>(
+                    <div key={i} style={card}>
+                      <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
+                        <div style={{flex:1}}>
+                          <div style={{fontWeight:700,fontSize:13,marginBottom:6}}>⚡ {m.label}</div>
+                          <div style={{fontSize:12,color:"#374151",whiteSpace:"pre-wrap",lineHeight:1.5,background:"#f8fafc",padding:10,borderRadius:8}}>{m.text}</div>
+                        </div>
+                        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                          <button onClick={()=>navigator.clipboard.writeText(m.text)} style={{...btn("#3b82f6"),padding:"5px 10px",fontSize:11}}>📋 Copiar</button>
+                          <button onClick={()=>setActiveQuickMsg(activeQuickMsg===i?null:i)} style={{...btn("#25d366"),padding:"5px 10px",fontSize:11}}>📱 Enviar</button>
+                          <button onClick={()=>{if(confirm("Excluir?"))setQuickMsgs(p=>p.filter((_,j)=>j!==i));}} style={{...btn("#fee2e2","#ef4444"),padding:"5px 8px",fontSize:11}}>🗑</button>
+                        </div>
+                      </div>
+                      {activeQuickMsg===i&&(
+                        <div style={{marginTop:10,padding:10,background:"#eff6ff",borderRadius:8}}>
+                          <div style={{fontSize:12,fontWeight:600,marginBottom:6}}>Enviar para:</div>
+                          <select onChange={e=>{const c=clients.find(x=>String(x.id)===e.target.value);if(c)openWA(c,m.text);}} style={inpS}>
+                            <option value="">Selecione o cliente...</option>
+                            {clients.filter(c=>c.phone).map(c=><option key={c.id} value={String(c.id)}>{c.name}</option>)}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* IA */}
+            {tab==="ai"&&(
+              <div>
+                <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+                  {[["message","💬 Mensagem"],["objection","🎯 Objeção"],["summary","📝 Resumo"]].map(([id,label])=>(
+                    <button key={id} onClick={()=>{setAiMode(id);setAiResponse("");}} style={btn(aiMode===id?"#2563eb":"#f1f5f9",aiMode===id?"white":"#64748b")}>{label}</button>
+                  ))}
+                </div>
+                <div style={card}>
+                  {aiMode==="message"&&<div>
+                    <div style={{fontWeight:700,marginBottom:14}}>💬 Gerar Mensagem</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+                      <FF label="Produto"><select value={aiProduct} onChange={e=>setAiProduct(e.target.value)} style={inpS}>{PRODUCTS.map(x=><option key={x}>{x}</option>)}</select></FF>
+                      <FF label="Nome do Cliente"><input value={aiClientName} onChange={e=>setAiClientName(e.target.value)} style={inpS} placeholder="Ex: João"/></FF>
+                    </div>
+                    <FF label="Contexto (opcional)"><input value={aiInput} onChange={e=>setAiInput(e.target.value)} style={inpS} placeholder="Ex: negativado, quer quitar dívida..."/></FF>
+                  </div>}
+                  {aiMode==="objection"&&<div>
+                    <div style={{fontWeight:700,marginBottom:14}}>🎯 Contornar Objeção</div>
+                    <FF label="Produto"><select value={aiProduct} onChange={e=>setAiProduct(e.target.value)} style={{...inpS,marginBottom:10}}>{PRODUCTS.map(x=><option key={x}>{x}</option>)}</select></FF>
+                    <FF label="O cliente disse:"><input value={aiInput} onChange={e=>setAiInput(e.target.value)} style={inpS} placeholder='Ex: "não tenho interesse"'/></FF>
+                  </div>}
+                  {aiMode==="summary"&&<div>
+                    <div style={{fontWeight:700,marginBottom:14}}>📝 Resumo do Cliente</div>
+                    <FF label="Selecione o cliente"><select value={aiInput} onChange={e=>setAiInput(e.target.value)} style={inpS}><option value="">Selecione...</option>{clients.map(c=><option key={c.id} value={String(c.id)}>{c.name}</option>)}</select></FF>
+                  </div>}
+                  <button onClick={callAI} disabled={aiLoading} style={{...btn(aiLoading?"#94a3b8":"#6366f1"),width:"100%",marginTop:14,padding:"10px"}}>
+                    {aiLoading?"⏳ Gerando...":"✨ Gerar com IA"}
+                  </button>
+                  {aiResponse&&<div style={{marginTop:14,background:"#f0fdf4",border:"1px solid #86efac",borderRadius:10,padding:14}}>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+                      <span style={{fontSize:12,fontWeight:700,color:"#16a34a"}}>✅ Resposta:</span>
+                      <button onClick={()=>navigator.clipboard.writeText(aiResponse)} style={{...btn("#dcfce7","#16a34a"),padding:"4px 10px",fontSize:11}}>📋 Copiar</button>
+                    </div>
+                    <div style={{fontSize:13,color:"#1e293b",whiteSpace:"pre-wrap",lineHeight:1.6}}>{aiResponse}</div>
+                  </div>}
+                </div>
+              </div>
+            )}
+
+            {/* RELATÓRIOS */}
+            {tab==="reports"&&(
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:16}}>
+                <div style={card}>
+                  <div style={{fontWeight:700,marginBottom:12}}>📊 Conversão por Produto</div>
+                  {PRODUCTS.map(prod=>{
+                    const total=proposals.filter(p=>p.product===prod).length;
+                    const won=proposals.filter(p=>p.product===prod&&p.status==="pago").length;
+                    const pct=total?Math.round((won/total)*100):0;
+                    return total>0?<div key={prod} style={{marginBottom:10}}>
+                      <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}><span>{prod.split("/")[0].trim()}</span><span style={{fontWeight:700}}>{won}/{total} ({pct}%)</span></div>
+                      <div style={{height:6,background:"#f1f5f9",borderRadius:3}}><div style={{height:"100%",width:`${pct}%`,background:"#10b981",borderRadius:3}}/></div>
+                    </div>:null;
+                  })}
+                  {proposals.length===0&&<div style={{color:"#94a3b8",fontSize:13}}>Sem dados.</div>}
+                </div>
+                <div style={card}>
+                  <div style={{fontWeight:700,marginBottom:12}}>❌ Motivos de Perda</div>
+                  {LOSS_REASONS.filter(r=>proposals.some(p=>p.lossReason===r)).map(r=>(
+                    <div key={r} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #f1f5f9"}}>
+                      <span style={{fontSize:12}}>{r}</span>
+                      <span style={{fontWeight:700,color:"#ef4444"}}>{proposals.filter(p=>p.lossReason===r).length}</span>
+                    </div>
+                  ))}
+                  {proposals.filter(p=>p.status==="perdido").length===0&&<div style={{color:"#94a3b8",fontSize:13}}>Sem perdas.</div>}
+                </div>
+                <div style={card}>
+                  <div style={{fontWeight:700,marginBottom:12}}>🔄 Reativar</div>
+                  {clients.filter(c=>["retorno_futuro","bloqueado"].includes(c.status)).map(c=>(
+                    <div key={c.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #f1f5f9"}}>
+                      <div><div style={{fontSize:13,fontWeight:600}}>{c.name}</div><div style={{fontSize:11,color:"#64748b"}}>{c.product}</div></div>
+                      {c.phone&&<button onClick={()=>openWA(c)} style={{...btn("#25d366"),padding:"4px 8px",fontSize:11}}>📱 WA</button>}
+                    </div>
+                  ))}
+                  {clients.filter(c=>["retorno_futuro","bloqueado"].includes(c.status)).length===0&&<div style={{color:"#94a3b8",fontSize:13}}>Nenhum para reativar.</div>}
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+  </script>
+</body>
+</html>
