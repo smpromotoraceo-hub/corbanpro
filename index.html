@@ -10,771 +10,1022 @@
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
     body{font-family:Inter,-apple-system,BlinkMacSystemFont,sans-serif;background:#f8fafc;}
-    input,select,textarea{font-family:inherit;}
-    ::-webkit-scrollbar{width:6px;height:6px;}
+    input,select,textarea,button{font-family:inherit;}
+    ::-webkit-scrollbar{width:5px;height:5px;}
     ::-webkit-scrollbar-track{background:#f1f5f9;}
     ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px;}
+    option{color:#1e293b;}
   </style>
 </head>
 <body>
-  <div id="root"></div>
-  <script type="text/babel">
-    const {useState,useEffect,useRef}=React;
+<div id="root"></div>
+<script type="text/babel">
+const{useState,useEffect,useRef}=React;
 
-    const PRODUCTS=["FGTS / Saque-Aniversário","Crédito CLT","Servidor Federal / SIAPE","Consignado INSS","Refinanciamento","Cartão Benefício"];
-    const BANKS=["Caixa","BMG","Itaú Consignado","Bradesco","Safra","Pan","C6 Consig","Banco do Brasil","Santander","Outro"];
-    const CONSULTANTS=["Consultor 1","Consultor 2","Consultor 3","Consultor 4","Consultor 5"];
-    const ORIGINS=["Instagram","Facebook","WhatsApp","Indicação","Google","TikTok","Tráfego Pago","Lista Fria","Ligação Ativa","Portabilidade","Cliente Antigo","Site","Outro"];
-    const FUNNEL=[
-      {id:"novo_lead",label:"🆕 Novo Lead",color:"#64748b"},
-      {id:"qualificacao",label:"🔍 Em Qualificação",color:"#3b82f6"},
-      {id:"aguardando_autorizacao",label:"⏳ Aguard. Autorização",color:"#f59e0b"},
-      {id:"autorizado",label:"✅ Autorizado",color:"#8b5cf6"},
-      {id:"consulta_realizada",label:"📊 Consulta Realizada",color:"#06b6d4"},
-      {id:"proposta_enviada",label:"📤 Proposta Enviada",color:"#f97316"},
-      {id:"aguardando_docs",label:"📄 Aguard. Documentos",color:"#eab308"},
-      {id:"digitacao",label:"⌨️ Em Digitação",color:"#6366f1"},
-      {id:"aguardando_banco",label:"🏦 Aguard. Banco",color:"#a855f7"},
-      {id:"aprovado_assinatura",label:"✍️ Aprovado/Assinatura",color:"#10b981"},
-      {id:"pago",label:"💰 Pago/Fechado",color:"#059669"},
-      {id:"retorno_futuro",label:"🔄 Retorno Futuro",color:"#0ea5e9"},
-      {id:"bloqueado",label:"🚫 Bloqueado",color:"#94a3b8"},
-      {id:"perdido",label:"❌ Perdido",color:"#ef4444"},
-    ];
-    const LOSS_REASONS=["Cliente não respondeu","Valor baixo","Taxa/parcela não agradou","Sem saldo FGTS","Sem margem CLT","Não autorizou banco","Não enviou documentos","Erro Caixa/app","Banco recusou","Cliente fechou com concorrente","Cliente achou que era golpe","Telefone inválido","Fora do perfil","Retornar no próximo mês","Outro"];
-    const QUICK_MSGS=[
-      {label:"Primeiro Atendimento",text:"Oi, tudo bem? 😊 Aqui é da CorbanPRO! Me confirma qual crédito você quer consultar hoje: FGTS, CLT ou servidor?"},
-      {label:"Pedido de Autorização",text:"Para consultar com segurança, preciso que você autorize os bancos no aplicativo. Assim que autorizar, me avise por aqui! 👍"},
-      {label:"Cliente Parado",text:"Oi! 👋 Passando para ver se você ainda tem interesse na simulação. Posso reconsultar para você?"},
-      {label:"Pedido de Documentos",text:"Ótimo! Para avançar preciso de: RG ou CNH, comprovante de residência e comprovante de renda. Pode me enviar por aqui? 📎"},
-      {label:"Proposta Aprovada",text:"🎉 Boa notícia! Sua proposta foi aprovada! Agora preciso que você assine o contrato. Vou te passar os detalhes!"},
-      {label:"Pós-Venda",text:"Seu contrato foi finalizado! ✅ Qualquer dúvida, fico à disposição. Obrigada pela confiança! 🙏"},
-    ];
-    const CHECKLIST_ITEMS=["Cliente autorizou consulta?","Cliente recebeu explicação clara?","Cliente confirmou interesse?","Dados conferidos?","Documento legível?","Proposta enviada sem promessa falsa?","Contrato assinado pelo próprio cliente?","Comprovante salvo?","Atendimento respeitou política?"];
-    const BOT_FLOW=[
-      {bot:"Olá! 👋 Seja bem-vindo ao CorbanPRO!\n\nSou o assistente virtual e vou te ajudar enquanto um consultor fica disponível.\n\nPrimeiro, me diz seu *nome completo*? 😊",field:"name"},
-      {bot:(d)=>`Prazer, *${d.name}*! 😊\n\nQual produto você tem interesse?\n\n1️⃣ FGTS / Saque-Aniversário\n2️⃣ Crédito CLT\n3️⃣ Servidor Federal / SIAPE\n4️⃣ Consignado INSS\n\nDigite o número:`,field:"product"},
-      {bot:"Ótimo! Para verificar as condições, me informa seu *CPF*? 🔒",field:"cpf"},
-      {bot:"Qual seu *salário líquido* aproximado? 💰",field:"salary"},
-      {bot:(d)=>`Perfeito! ✅\n\n📋 *Resumo:*\n👤 ${d.name}\n📦 ${d.product}\n🪪 CPF: ${d.cpf}\n💰 Salário: R$ ${d.salary}\n\nUm consultor irá te atender em instantes! ⏳`,field:null},
-    ];
-    const PRODUCT_MAP={"1":"FGTS / Saque-Aniversário","2":"Crédito CLT","3":"Servidor Federal / SIAPE","4":"Consignado INSS"};
-    const originColor={"Instagram":"#e1306c","Facebook":"#1877f2","WhatsApp":"#25d366","Indicação":"#f59e0b","Google":"#ea4335","TikTok":"#010101","Tráfego Pago":"#6366f1","Lista Fria":"#64748b","Ligação Ativa":"#8b5cf6","Portabilidade":"#0ea5e9","Cliente Antigo":"#f97316","Site":"#10b981","Outro":"#94a3b8"};
-    const fColor=(id)=>FUNNEL.find(f=>f.id===id)?.color||"#64748b";
-    const fLabel=(id)=>FUNNEL.find(f=>f.id===id)?.label||id;
+const PRODUCTS=["FGTS / Saque-Aniversário","Crédito CLT","Servidor Federal / SIAPE","Consignado INSS","Refinanciamento","Cartão Benefício"];
+const BANKS=["Caixa","BMG","Itaú Consignado","Bradesco","Safra","Pan","C6 Consig","Banco do Brasil","Santander","Outro"];
+const CONSULTANTS=["Beatriz","Consultor 2","Consultor 3","Consultor 4","Consultor 5"];
+const ORIGINS=["Instagram","Facebook","WhatsApp","Indicação","Google","TikTok","Tráfego Pago","Lista Fria","Ligação Ativa","Portabilidade","Cliente Antigo","Site","Outro"];
+const FUNNEL=[
+  {id:"novo_lead",label:"Novo Lead",color:"#64748b"},
+  {id:"qualificacao",label:"Qualificação",color:"#3b82f6"},
+  {id:"aguardando_autorizacao",label:"Aguard. Autorização",color:"#f59e0b"},
+  {id:"autorizado",label:"Autorizado",color:"#8b5cf6"},
+  {id:"consulta_realizada",label:"Consulta Realizada",color:"#06b6d4"},
+  {id:"proposta_enviada",label:"Proposta Enviada",color:"#f97316"},
+  {id:"aguardando_docs",label:"Aguard. Documentos",color:"#eab308"},
+  {id:"digitacao",label:"Em Digitação",color:"#6366f1"},
+  {id:"aguardando_banco",label:"Aguard. Banco",color:"#a855f7"},
+  {id:"aprovado_assinatura",label:"Aprovado/Assinatura",color:"#10b981"},
+  {id:"pago",label:"Pago/Fechado",color:"#059669"},
+  {id:"retorno_futuro",label:"Retorno Futuro",color:"#0ea5e9"},
+  {id:"bloqueado",label:"Bloqueado",color:"#94a3b8"},
+  {id:"perdido",label:"Perdido",color:"#ef4444"},
+];
+const TAGS=[
+  {id:"vendas",label:"VENDAS",color:"#10b981"},
+  {id:"operacional",label:"OPERACIONAL",color:"#3b82f6"},
+  {id:"resgate",label:"RESGATE",color:"#8b5cf6"},
+  {id:"faltaretorno",label:"FALTA RETORNO",color:"#f59e0b"},
+  {id:"aguardandopagamento",label:"AGUARD. PAGAMENTO",color:"#f97316"},
+  {id:"seminteresse",label:"SEM INTERESSE",color:"#ef4444"},
+];
+const LOSS_REASONS=["Cliente não respondeu","Valor baixo","Taxa não agradou","Sem saldo FGTS","Sem margem CLT","Não autorizou banco","Não enviou documentos","Banco recusou","Fechou com concorrente","Fora do perfil","Outro"];
+const DEFAULT_MSGS=[
+  {id:1,category:"Abordagem",label:"Primeiro Atendimento",text:"Oi, tudo bem? 😊 Aqui é da CorbanPRO! Me confirma qual crédito você quer consultar hoje: FGTS, CLT ou servidor?"},
+  {id:2,category:"Abordagem",label:"Reativação",text:"Oi! 😊 Aqui é a CorbanPRO. Você fez uma simulação conosco e pode ter uma nova oportunidade. Posso verificar?"},
+  {id:3,category:"Operacional",label:"Pedido de Autorização",text:"Para consultar com segurança, preciso que você autorize os bancos no aplicativo. Assim que autorizar, me avise! 👍"},
+  {id:4,category:"Operacional",label:"Pedido de Documentos",text:"Ótimo! Para avançar preciso de: RG ou CNH, comprovante de residência e renda. Pode enviar por aqui? 📎"},
+  {id:5,category:"Operacional",label:"Cliente Parado",text:"Oi! 👋 Passando para ver se você ainda tem interesse na simulação. Posso reconsultar para você?"},
+  {id:6,category:"Fechamento",label:"Proposta Aprovada",text:"🎉 Sua proposta foi aprovada! Agora preciso que você assine o contrato. Vou te passar os detalhes!"},
+  {id:7,category:"Fechamento",label:"Pós-Venda",text:"Contrato finalizado! ✅ Qualquer dúvida, fico à disposição. Obrigada pela confiança! 🙏"},
+  {id:8,category:"Reconsulta",label:"Nova Margem Disponível",text:"Oi {nome}! 🎉 Sua margem foi atualizada e você pode ter um novo crédito disponível. Posso verificar agora?"},
+  {id:9,category:"Simulação",label:"Enviar Simulação",text:"Olá {nome}! Fiz uma simulação:\n\n💰 Valor: R$ {valor}\n📅 Prazo: {prazo} meses\n💳 Parcela: R$ {parcela}\n🏦 Banco: {banco}\n\nDinheiro em até 2 dias úteis! Prosseguir? 😊"},
+];
+const CHECKLIST_ITEMS=["Cliente autorizou consulta?","Explicação clara fornecida?","Cliente confirmou interesse?","Dados conferidos?","Documento legível?","Proposta sem promessa falsa?","Contrato assinado pelo cliente?","Comprovante salvo?","Atendimento respeitou política?"];
+const BANK_RATES={"Caixa":{min:1.49,prazo:96},"BMG":{min:1.65,prazo:84},"Itaú Consignado":{min:1.55,prazo:96},"Bradesco":{min:1.60,prazo:84},"Safra":{min:1.70,prazo:72},"Pan":{min:1.75,prazo:84},"C6 Consig":{min:1.58,prazo:96},"Banco do Brasil":{min:1.45,prazo:96},"Santander":{min:1.62,prazo:84}};
+const OC={"Instagram":"#e1306c","Facebook":"#1877f2","WhatsApp":"#25d366","Indicação":"#f59e0b","Google":"#ea4335","TikTok":"#010101","Tráfego Pago":"#6366f1","Lista Fria":"#64748b","Ligação Ativa":"#8b5cf6","Portabilidade":"#0ea5e9","Cliente Antigo":"#f97316","Site":"#10b981","Outro":"#94a3b8"};
 
-    function useStorage(key,def){
-      const[val,setVal]=useState(()=>{try{const s=localStorage.getItem(key);return s?JSON.parse(s):def;}catch{return def;}});
-      useEffect(()=>{try{localStorage.setItem(key,JSON.stringify(val));}catch{}},[key,val]);
-      return[val,setVal];
+function useStorage(k,d){const[v,sv]=useState(()=>{try{const s=localStorage.getItem(k);return s?JSON.parse(s):d;}catch{return d;}});useEffect(()=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}},[k,v]);return[v,sv];}
+function tAgo(ts){if(!ts)return"";const d=Math.floor((Date.now()-ts)/1000);if(d<60)return d+"s";if(d<3600)return Math.floor(d/60)+"min";if(d<86400)return Math.floor(d/3600)+"h";return Math.floor(d/86400)+"d";}
+const fC=(id)=>FUNNEL.find(f=>f.id===id)?.color||"#64748b";
+const fL=(id)=>FUNNEL.find(f=>f.id===id)?.label||id;
+const tC=(id)=>TAGS.find(t=>t.id===id)?.color||"#64748b";
+const tLb=(id)=>TAGS.find(t=>t.id===id)?.label||id;
+const pmt=(pv,r,n)=>r?pv*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1):pv/n;
+const score=(c)=>{const m=(c.messages||[]).filter(x=>x.from==="in").length;const hm=parseFloat(c.margin||0)>0;const rc=c.lastMsgTs&&Date.now()-c.lastMsgTs<172800000;if(rc&&hm&&m>2)return"hot";if(m>0&&hm)return"warm";return"cold";};
+const SC={hot:{label:"🔥 Quente",color:"#ef4444"},warm:{label:"🟡 Morno",color:"#f59e0b"},cold:{label:"🔵 Frio",color:"#3b82f6"}};
+
+function App(){
+  const[contacts,setContacts]=useStorage("cp_c",[]);
+  const[commissions,setCommissions]=useStorage("cp_cm",[]);
+  const[gAgenda,setGAgenda]=useStorage("cp_ga",[]);
+  const[creds,setCreds]=useStorage("cp_cr",[]);
+  const[zapi,setZapi]=useStorage("cp_z",{instanceId:"",token:"",phone:"",connected:false});
+  const[zapiLogs,setZapiLogs]=useStorage("cp_zl",[]);
+  const[qMsgs,setQMsgs]=useStorage("cp_qm",DEFAULT_MSGS);
+  const[campaigns,setCampaigns]=useStorage("cp_camp",[]);
+  const[scheduled,setScheduled]=useStorage("cp_sch",[]);
+  const[teamChat,setTeamChat]=useStorage("cp_tc",[]);
+  const[flows,setFlows]=useStorage("cp_fl",[{id:1,name:"Fluxo Principal",nodes:[{id:"s1",type:"start",text:"Olá! 👋 Bem-vindo à CorbanPRO!\n\n1️⃣ FGTS\n2️⃣ Crédito CLT\n3️⃣ Servidor Federal\n4️⃣ Falar com consultor"},{id:"s2",type:"message",text:"Ótimo! Para consultar preciso do seu CPF. Pode informar?"},{id:"s3",type:"human",text:"Transferindo para um consultor... ⏳"}]}]);
+  const[consultant,setConsultant]=useStorage("cp_cons","Beatriz");
+  const[screen,setScreen]=useState("chat");
+  const[ac,setAc]=useState(null);
+  const[cTab,setCTab]=useState("atendimentos");
+  const[srch,setSrch]=useState("");
+  const[msgIn,setMsgIn]=useState("");
+  const[showNC,setShowNC]=useState(false);
+  const[showQM,setShowQM]=useState(false);
+  const[showTM,setShowTM]=useState(false);
+  const[showTr,setShowTr]=useState(false);
+  const[showAI,setShowAI]=useState(false);
+  const[showNt,setShowNt]=useState(false);
+  const[showCk,setShowCk]=useState(false);
+  const[showSim,setShowSim]=useState(false);
+  const[aiLoad,setAiLoad]=useState(false);
+  const[aiResp,setAiResp]=useState("");
+  const[stab,setStab]=useState("detalhes");
+  const[lossM,setLossM]=useState(null);
+  const[lossR,setLossR]=useState("");
+  const[tMsg,setTMsg]=useState("");
+  const[simR,setSimR]=useState(null);
+  const[simF,setSimF]=useState({value:"5000",product:PRODUCTS[0]});
+  const[higR,setHigR]=useState(null);
+  const[higL,setHigL]=useState(false);
+  const[selHig,setSelHig]=useState([]);
+  const[rFilt,setRFilt]=useState("month");
+  const[showCF,setShowCF]=useState(false);
+  const[campF,setCampF]=useState({name:"",message:"",filter:"all",scheduledAt:""});
+  const[showSF,setShowSF]=useState(false);
+  const[schedF,setSchedF]=useState({contactId:"",message:"",scheduledAt:"",type:"Lembrete"});
+  const[notifs,setNotifs]=useState([]);
+  const[showNf,setShowNf]=useState(false);
+  const[aFlow,setAFlow]=useState(null);
+  const[newNode,setNewNode]=useState({type:"message",text:""});
+  const[salary,setSalary]=useState("");
+  const[pct,setPct]=useState("35");
+  const eC={name:"",phone:"",cpf:"",email:"",city:"",product:PRODUCTS[0],origin:"WhatsApp",status:"novo_lead",tags:[],consultant,notes:"",salary:"",margin:"",preApproved:"",released:"",returnDate:"",bank:"",messages:[],proposals:[],agendaItems:[],checklist:{},docs:[]};
+  const[cf,setCf]=useState(eC);
+  const msgEnd=useRef(null);const tcEnd=useRef(null);
+  const today=new Date().toISOString().split("T")[0];
+
+  useEffect(()=>{msgEnd.current?.scrollIntoView({behavior:"smooth"});},[ac?.messages]);
+  useEffect(()=>{tcEnd.current?.scrollIntoView({behavior:"smooth"});},[teamChat]);
+
+  const saveC=()=>{
+    if(!cf.name||!cf.phone)return alert("Nome e telefone obrigatórios");
+    const nc={...cf,id:Date.now(),createdAt:Date.now(),lastMsgTs:Date.now(),messages:[{id:Date.now(),from:"system",text:"Contato criado por "+consultant,ts:Date.now()}]};
+    setContacts(p=>[nc,...p]);setAc(nc);setCf(eC);setShowNC(false);
+  };
+
+  const upC=(field,value)=>{
+    if(!ac)return;
+    const u={...ac,[field]:value};
+    setContacts(p=>p.map(c=>c.id===ac.id?u:c));setAc(u);
+  };
+
+  const sendMsg=(text,type="out")=>{
+    if(!text?.trim()||!ac)return;
+    const msg={id:Date.now(),from:type,text:text.trim(),ts:Date.now(),consultant};
+    const u={...ac,messages:[...(ac.messages||[]),msg],lastMsg:text.trim(),lastMsgTs:Date.now()};
+    setContacts(p=>p.map(c=>c.id===ac.id?u:c));setAc(u);setMsgIn("");
+  };
+
+  const togTag=(id)=>{const t=ac?.tags||[];upC("tags",t.includes(id)?t.filter(x=>x!==id):[...t,id]);setShowTM(false);};
+
+  const encerrar=()=>{if(!confirm("Encerrar?"))return;upC("status","retorno_futuro");sendMsg("Atendimento encerrado.","system");};
+
+  const upPS=(pid,st)=>{
+    if(st==="perdido"){setLossM(pid);return;}
+    upC("proposals",(ac.proposals||[]).map(p=>p.id===pid?{...p,status:st}:p));
+  };
+
+  const confLoss=()=>{
+    if(!lossR)return alert("Selecione o motivo");
+    upC("proposals",(ac.proposals||[]).map(p=>p.id===lossM?{...p,status:"perdido",lossReason:lossR}:p));
+    setLossM(null);setLossR("");
+  };
+
+  const runSim=()=>{
+    const val=parseFloat(simF.value)||5000;
+    const res=Object.entries(BANK_RATES).map(([bank,r])=>{const rate=r.min/100;const parc=pmt(val,rate,r.prazo);return{bank,rate:r.min,prazo:r.prazo,parc,total:parc*r.prazo};}).sort((a,b)=>a.rate-b.rate);
+    setSimR({val,res});
+  };
+
+  const useSimRes=(r)=>{
+    const msg=`Olá ${ac?.name?.split(" ")[0]||""}! Fiz uma simulação:\n\n💰 Valor: R$ ${parseFloat(simF.value).toLocaleString("pt-BR",{minimumFractionDigits:2})}\n📅 Prazo: ${r.prazo}x\n💳 Parcela: R$ ${r.parc.toLocaleString("pt-BR",{minimumFractionDigits:2})}\n🏦 Banco: ${r.bank}\n📊 Taxa: ${r.rate}% a.m.\n\nDinheiro em até 2 dias úteis! Prosseguir? 😊`;
+    setMsgIn(msg);setShowSim(false);setSimR(null);
+  };
+
+  const runRecon=async()=>{
+    if(!ac)return;sendMsg("🔄 Reconsulta iniciada...","system");
+    await new Promise(r=>setTimeout(r,2000));
+    const has=Math.random()>0.3;const val=(Math.random()*8000+1000).toFixed(2);
+    if(has){upC("preApproved",val);upC("status","consulta_realizada");sendMsg(`✅ Reconsulta: nova margem de R$ ${parseFloat(val).toLocaleString("pt-BR",{minimumFractionDigits:2})} disponível!`,"system");}
+    else sendMsg("❌ Reconsulta: sem nova margem no momento.","system");
+  };
+
+  const runHig=async(ids)=>{
+    setHigL(true);await new Promise(r=>setTimeout(r,2000));
+    const res=ids.map(id=>{const c=contacts.find(x=>x.id===id);const has=Math.random()>0.4;const val=has?(Math.random()*8000+500).toFixed(2):0;return{id,name:c?.name,phone:c?.phone,product:c?.product,has,val:parseFloat(val),status:has?"✅ Disponível":"❌ Sem saldo"};});
+    setHigR(res);setHigL(false);
+    res.filter(r=>r.has).forEach(r=>setContacts(p=>p.map(c=>c.id===r.id?{...c,preApproved:r.val,status:"consulta_realizada"}:c)));
+  };
+
+  const callAI=async(mode)=>{
+    setAiLoad(true);setAiResp("");
+    const lm=(ac?.messages||[]).filter(m=>m.from==="in").slice(-3).map(m=>m.text).join("\n");
+    let p="";
+    if(mode==="resposta")p=`Você é consultora de crédito da CorbanPRO. O cliente ${ac?.name} enviou: "${lm}". Produto: ${ac?.product}. Crie uma resposta profissional e empática. Máximo 80 palavras.`;
+    else if(mode==="abordagem")p=`Crie uma mensagem de abordagem inicial para o produto ${ac?.product} para o cliente ${ac?.name}. Seja direto, empático e use emojis com moderação. Máximo 100 palavras.`;
+    else if(mode==="objecao")p=`Especialista em vendas de crédito. O cliente disse: "${lm}". Crie resposta de contorno de objeção empática. Produto: ${ac?.product}. Máximo 100 palavras.`;
+    else if(mode==="resumo")p=`Resumo executivo: ${ac?.name}, Produto: ${ac?.product}, Salário: R$ ${ac?.salary}, Margem: R$ ${ac?.margin}, Status: ${fL(ac?.status)}, Score: ${SC[score(ac)]?.label}. Destaque oportunidades. Máximo 100 palavras.`;
+    else if(mode==="fluxo")p=`Crie um fluxo de atendimento WhatsApp para correspondente bancário com FGTS, CLT e SIAPE. Liste os nós: boas-vindas, qualificação, coleta de dados e transferência. Formato de tópicos. Máximo 150 palavras.`;
+    try{
+      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,messages:[{role:"user",content:p}]})});
+      const data=await res.json();setAiResp(data.content?.[0]?.text||"Erro.");
+    }catch{setAiResp("Erro de conexão.");}
+    setAiLoad(false);
+  };
+
+  const chkZapi=async()=>{
+    if(!zapi.instanceId||!zapi.token)return alert("Preencha Instance ID e Token");
+    try{const res=await fetch(`https://api.z-api.io/instances/${zapi.instanceId}/token/${zapi.token}/status`);const d=await res.json();setZapi(p=>({...p,connected:!!d.connected}));setZapiLogs(l=>[{ts:Date.now(),msg:d.connected?"✅ Conectado!":"❌ Não conectado."},...l.slice(0,49)]);}
+    catch(e){setZapiLogs(l=>[{ts:Date.now(),msg:"⚠️ Erro: "+e.message},...l.slice(0,49)]);}
+  };
+
+  const sendZ=async(phone,msg)=>{
+    if(!zapi.connected)return false;
+    try{await fetch(`https://api.z-api.io/instances/${zapi.instanceId}/token/${zapi.token}/send-text`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone:phone.replace(/\D/g,""),message:msg})});setZapiLogs(l=>[{ts:Date.now(),msg:"📤 Enviado para "+phone},...l.slice(0,49)]);return true;}catch{return false;}
+  };
+
+  const openWA=(c,msg="")=>{
+    const t={"FGTS / Saque-Aniversário":n=>`Olá ${n}! 👋 Pode antecipar seu *FGTS* hoje! Me manda seu CPF! 🚀`,"Crédito CLT":n=>`Olá ${n}! 😊 Crédito pelo *CLT* a partir de 1,8% a.m. Quer simular? 👇`,"Servidor Federal / SIAPE":n=>`Olá ${n}! *SIAPE* com melhores taxas! 1,5% a.m. Vamos simular? 😊`};
+    const fn=t[c.product]||(n=>`Olá ${n}! Aqui é a CorbanPRO. Posso te ajudar? 😊`);
+    const m=msg||fn(c.name?.split(" ")[0]||"");
+    if(zapi.connected)sendZ(c.phone,m);else window.open(`https://wa.me/55${c.phone?.replace(/\D/g,"")}?text=${encodeURIComponent(m)}`,"_blank");
+  };
+
+  const saveCamp=()=>{
+    if(!campF.name||!campF.message)return alert("Preencha nome e mensagem");
+    const fil=campF.filter==="all"?contacts:contacts.filter(c=>c.product===campF.filter||c.status===campF.filter);
+    setCampaigns(p=>[...p,{...campF,id:Date.now(),status:"rascunho",total:fil.length,sent:0,createdAt:new Date().toLocaleDateString("pt-BR")}]);
+    setCampF({name:"",message:"",filter:"all",scheduledAt:""});setShowCF(false);
+  };
+
+  const sendCamp=async(camp)=>{
+    if(!confirm(`Enviar para ${camp.total} clientes?`))return;
+    setCampaigns(p=>p.map(c=>c.id===camp.id?{...c,status:"enviando"}:c));
+    const fil=camp.filter==="all"?contacts:contacts.filter(c=>c.product===camp.filter||c.status===camp.filter);
+    for(let i=0;i<fil.length;i++){
+      const c=fil[i];const m=camp.message.replace("{nome}",c.name?.split(" ")[0]||"").replace("{produto}",c.product||"");
+      await sendZ(c.phone,m);setCampaigns(p=>p.map(x=>x.id===camp.id?{...x,sent:i+1}:x));
+      await new Promise(r=>setTimeout(r,2000));
     }
+    setCampaigns(p=>p.map(c=>c.id===camp.id?{...c,status:"concluída"}:c));
+  };
 
-    function timeAgo(ts){const d=Math.floor((Date.now()-ts)/1000);if(d<60)return`${d}s`;if(d<3600)return`${Math.floor(d/60)}min`;return`${Math.floor(d/3600)}h`;}
+  const filPeriod=(items,field="createdAt")=>{const now=Date.now();const per={day:86400000,week:604800000,month:2592000000,year:31536000000};return items.filter(i=>now-(i[field]||0)<(per[rFilt]||per.month));};
 
-    function BotChat({lead,onUpdate}){
-      const[input,setInput]=useState("");
-      const endRef=useRef(null);
-      useEffect(()=>endRef.current?.scrollIntoView({behavior:"smooth"}),[lead.messages]);
-      const send=()=>{
-        if(!input.trim()||lead.botStep>=BOT_FLOW.length)return;
-        const step=BOT_FLOW[lead.botStep];
-        let nd={...lead.data};
-        if(step.field==="product")nd.product=PRODUCT_MAP[input.trim()]||input.trim();
-        else if(step.field)nd[step.field]=input.trim();
-        const next=lead.botStep+1;
-        let botText="";
-        if(next<BOT_FLOW.length){const nb=BOT_FLOW[next].bot;botText=typeof nb==="function"?nb(nd):nb;}
-        const msgs=[...lead.messages,{from:"user",text:input.trim(),ts:Date.now()}];
-        if(botText)msgs.push({from:"bot",text:botText,ts:Date.now()+200});
-        onUpdate({...lead,messages:msgs,botStep:next,data:nd,status:next>=BOT_FLOW.length?"aguardando":"bot"});
-        setInput("");
-      };
-      return(
-        <div style={{display:"flex",flexDirection:"column",height:280}}>
-          <div style={{flex:1,overflowY:"auto",padding:"10px 14px",display:"flex",flexDirection:"column",gap:6,background:"#ece5dd"}}>
-            {lead.messages.map((m,i)=>(
-              <div key={i} style={{display:"flex",justifyContent:m.from==="bot"?"flex-start":"flex-end"}}>
-                <div style={{maxWidth:"80%",padding:"7px 11px",borderRadius:m.from==="bot"?"0 10px 10px 10px":"10px 0 10px 10px",background:m.from==="bot"?"white":"#dcf8c6",fontSize:12,lineHeight:1.5,boxShadow:"0 1px 2px rgba(0,0,0,0.1)",whiteSpace:"pre-wrap"}}>
-                  {m.from==="bot"&&<div style={{fontSize:10,color:"#25d366",fontWeight:700,marginBottom:2}}>🤖 CorbanPRO Bot</div>}
-                  {m.text}
-                </div>
-              </div>
-            ))}
-            <div ref={endRef}/>
+  const exportCSV=()=>{
+    const rows=[["Nome","Telefone","CPF","Produto","Status","Origem","Consultor","Criado em","Último contato","Pré-aprovado"],...contacts.map(c=>[c.name,c.phone,c.cpf,c.product,fL(c.status),c.origin,c.consultant,c.createdAt?new Date(c.createdAt).toLocaleDateString("pt-BR"):"",c.lastMsgTs?new Date(c.lastMsgTs).toLocaleDateString("pt-BR"):"",c.preApproved||""])];
+    const csv=rows.map(r=>r.map(v=>`"${(v||"").toString().replace(/"/g,'""')}"`).join(";")).join("\n");
+    const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8;"});
+    const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="corbanpro_"+rFilt+".csv";a.click();URL.revokeObjectURL(url);
+  };
+
+  const allP=contacts.flatMap(c=>(c.proposals||[]).map(p=>({...p,clientName:c.name,clientId:c.id})));
+  const totComm=commissions.reduce((s,c)=>s+(parseFloat(c.received)||0),0);
+  const pendComm=commissions.filter(c=>c.status==="Pendente").reduce((s,c)=>s+(parseFloat(c.expected)||0),0);
+  const totRel=allP.filter(p=>p.status==="pago").reduce((s,p)=>s+(parseFloat(p.value)||0),0);
+  const hotL=contacts.filter(c=>score(c)==="hot");
+  const todayAg=gAgenda.filter(a=>a.date===today&&!a.done);
+  const filC=contacts.filter(c=>{
+    const ms=c.name?.toLowerCase().includes(srch.toLowerCase())||c.phone?.includes(srch)||(c.tags||[]).some(t=>tLb(t).toLowerCase().includes(srch.toLowerCase()));
+    const mt=cTab==="esperando"?c.status==="novo_lead":cTab==="automatico"?false:true;
+    return ms&&mt;
+  });
+
+  const S={
+    i:{width:"100%",border:"1px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontSize:13,outline:"none",boxSizing:"border-box",background:"white",fontFamily:"inherit"},
+    b:(bg,c="#fff",p="7px 12px")=>({background:bg,color:c,border:"none",borderRadius:8,padding:p,fontSize:12,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}),
+    cd:{background:"white",borderRadius:12,padding:14,boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:"1px solid #f1f5f9"},
+    l:{fontSize:11,color:"#94a3b8",marginBottom:3,display:"block"},
+  };
+
+  const NAV=[["chat","💬","Conversas"],["dashboard","📊","Dashboard"],["higienizacao","🔍","Higienização"],["simulador","🏦","Simulador"],["campanhas","📣","Campanhas"],["fluxos","🔀","Fluxos"],["agendadas","📅","Agendadas"],["mensagens","⚡","Mensagens"],["relatorios","📈","Relatórios"],["teamchat","👥","Chat Equipe"],["zapi","📡","Z-API"],["bancos","🔐","Bancos"]];
+
+  const FF=({l,ch})=>React.createElement("div",null,React.createElement("span",{style:S.l},l),ch);
+
+  return(
+    <div style={{display:"flex",height:"100vh",fontFamily:"Inter,sans-serif",background:"#f1f5f9",overflow:"hidden"}}>
+
+      {/* NAV */}
+      <div style={{width:58,background:"#1e293b",display:"flex",flexDirection:"column",alignItems:"center",padding:"10px 0",gap:2,flexShrink:0,overflowY:"auto"}}>
+        <div style={{width:32,height:32,borderRadius:8,background:"#3b82f6",display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontWeight:900,fontSize:12,marginBottom:10}}>CP</div>
+        {NAV.map(([id,icon,label])=>(
+          <div key={id} onClick={()=>setScreen(id)} title={label} style={{width:40,height:40,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,cursor:"pointer",background:screen===id?"rgba(59,130,246,0.25)":"transparent",color:screen===id?"#60a5fa":"#94a3b8"}}>
+            {icon}
           </div>
-          {lead.status==="bot"&&<div style={{padding:8,background:"#f0f0f0",display:"flex",gap:6}}>
-            <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="Simular resposta do cliente..." style={{flex:1,border:"1px solid #ddd",borderRadius:20,padding:"6px 12px",fontSize:12,outline:"none"}}/>
-            <button onClick={send} style={{background:"#25d366",border:"none",borderRadius:"50%",width:32,height:32,color:"white",cursor:"pointer",fontSize:14}}>➤</button>
-          </div>}
-          {lead.status==="aguardando"&&<div style={{padding:8,background:"#fff3cd",textAlign:"center",fontSize:12,color:"#856404",fontWeight:600}}>⏳ Aguardando consultor...</div>}
-          {lead.status==="atendendo"&&<div style={{padding:8,background:"#d1fae5",textAlign:"center",fontSize:12,color:"#065f46",fontWeight:600}}>✅ Em atendimento com {lead.consultant}</div>}
+        ))}
+        <div style={{flex:1}}/>
+        <div onClick={()=>setShowNf(!showNf)} style={{width:40,height:40,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,cursor:"pointer",color:"#94a3b8",position:"relative"}}>
+          🔔{notifs.length>0&&<div style={{position:"absolute",top:4,right:4,width:14,height:14,borderRadius:"50%",background:"#ef4444",display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontSize:8,fontWeight:700}}>{notifs.length}</div>}
         </div>
-      );
-    }
+        <div title={consultant} onClick={()=>{const i=prompt("Consultor (1-"+CONSULTANTS.length+"):\n"+CONSULTANTS.map((c,i)=>(i+1)+". "+c).join("\n"));const idx=parseInt(i)-1;if(CONSULTANTS[idx])setConsultant(CONSULTANTS[idx]);}} style={{width:30,height:30,borderRadius:"50%",background:"#10b981",display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontWeight:700,fontSize:11,cursor:"pointer",margin:"4px 0"}}>{consultant[0]}</div>
+      </div>
 
-    function App(){
-      const[tab,setTab]=useState("dashboard");
-      const[clients,setClients]=useStorage("cp_clients",[]);
-      const[proposals,setProposals]=useStorage("cp_proposals",[]);
-      const[commissions,setCommissions]=useStorage("cp_commissions",[]);
-      const[agenda,setAgenda]=useStorage("cp_agenda",[]);
-      const[queue,setQueue]=useStorage("cp_queue",[]);
-      const[quickMsgs,setQuickMsgs]=useStorage("cp_quickmsgs",QUICK_MSGS);
-      const[zapiConfig,setZapiConfig]=useStorage("cp_zapi",{instanceId:"",token:"",phone:"",connected:false});
-      const[zapiLogs,setZapiLogs]=useStorage("cp_zapilogs",[]);
-      const[consultant,setConsultant]=useStorage("cp_consultant","Consultor 1");
-      const[showForm,setShowForm]=useState(null);
-      const[search,setSearch]=useState("");
-      const[filterStatus,setFilterStatus]=useState("all");
-      const[lossModal,setLossModal]=useState(null);
-      const[lossReason,setLossReason]=useState("");
-      const[expandedLead,setExpandedLead]=useState(null);
-      const[newLeadPhone,setNewLeadPhone]=useState("");
-      const[selectedProposal,setSelectedProposal]=useState(null);
-      const[aiMode,setAiMode]=useState("message");
-      const[aiProduct,setAiProduct]=useState(PRODUCTS[0]);
-      const[aiClientName,setAiClientName]=useState("");
-      const[aiInput,setAiInput]=useState("");
-      const[aiResponse,setAiResponse]=useState("");
-      const[aiLoading,setAiLoading]=useState(false);
-      const[zapiStatus,setZapiStatus]=useState(null);
-      const[zapiQR,setZapiQR]=useState(null);
-      const[activeQuickMsg,setActiveQuickMsg]=useState(null);
-      const[qmf,setQmf]=useState({label:"",text:""});
+      {showNf&&<div style={{position:"fixed",top:10,left:68,zIndex:500,background:"white",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",width:260,padding:12}}>
+        <div style={{fontWeight:700,marginBottom:8,display:"flex",justifyContent:"space-between",fontSize:13}}>🔔 Notificações<button onClick={()=>{setNotifs([]);setShowNf(false);}} style={S.b("#f1f5f9","#64748b","2px 7px")}>Limpar</button></div>
+        {notifs.length===0&&<div style={{color:"#94a3b8",fontSize:12,textAlign:"center",padding:10}}>Sem notificações.</div>}
+        {notifs.map((n,i)=><div key={i} style={{padding:"5px 7px",borderRadius:7,background:"#f8fafc",marginBottom:4,fontSize:11,cursor:"pointer"}} onClick={()=>setShowNf(false)}>{n}</div>)}
+      </div>}
 
-      const today=new Date().toISOString().split("T")[0];
-      const inpS={width:"100%",border:"1px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontSize:13,outline:"none",boxSizing:"border-box",background:"white",fontFamily:"inherit"};
-      const btn=(bg,c="#fff",extra={})=>({background:bg,color:c,border:"none",borderRadius:8,padding:"8px 14px",fontSize:13,fontWeight:600,cursor:"pointer",...extra});
-      const card={background:"white",borderRadius:12,padding:16,boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:"1px solid #f1f5f9"};
-      const tag=(bg)=>({background:bg+"25",color:bg,borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:700});
-      const lbl={fontSize:12,color:"#64748b",marginBottom:4,display:"block"};
-      const FF=({label,children})=>React.createElement("div",null,React.createElement("span",{style:lbl},label),children);
-
-      const emptyC={name:"",cpf:"",dob:"",phone:"",phone2:"",email:"",city:"",product:PRODUCTS[0],bank:"",origin:"Instagram",status:"novo_lead",preApproved:"",requested:"",released:"",lastConsult:"",returnDate:"",consultant,notes:"",salary:"",margin:""};
-      const emptyP={clientId:"",product:PRODUCTS[0],bank:"",value:"",installments:"",rate:"",status:"novo_lead",commission:"",consultant,lossReason:"",checklist:{}};
-      const emptyA={clientId:"",date:"",time:"",type:"Follow-up",notes:"",done:false,consultant};
-
-      const[cf,setCf]=useState(emptyC);
-      const[pf,setPf]=useState(emptyP);
-      const[af,setAf]=useState(emptyA);
-      const[cmf,setCmf]=useState({proposalId:"",expected:"",received:"",status:"Pendente",date:""});
-
-      const saveClient=()=>{
-        if(!cf.name||!cf.cpf)return alert("Nome e CPF obrigatórios");
-        if(cf.id)setClients(p=>p.map(c=>c.id===cf.id?{...cf}:c));
-        else setClients(p=>[...p,{...cf,id:Date.now(),createdAt:new Date().toLocaleDateString("pt-BR")}]);
-        setCf(emptyC);setShowForm(null);
-      };
-      const saveProposal=()=>{
-        if(!pf.clientId)return alert("Selecione um cliente");
-        setProposals(p=>[...p,{...pf,id:Date.now(),createdAt:new Date().toLocaleDateString("pt-BR")}]);
-        setPf(emptyP);setShowForm(null);
-      };
-      const saveAgenda=()=>{
-        if(!af.date)return alert("Data obrigatória");
-        setAgenda(p=>[...p,{...af,id:Date.now()}]);
-        setAf(emptyA);setShowForm(null);
-      };
-      const saveComm=()=>{
-        setCommissions(p=>[...p,{...cmf,id:Date.now()}]);
-        setCmf({proposalId:"",expected:"",received:"",status:"Pendente",date:""});setShowForm(null);
-      };
-
-      const updateProposalStatus=(id,status)=>{
-        if(status==="perdido"){setLossModal(id);return;}
-        setProposals(p=>p.map(x=>x.id===id?{...x,status}:x));
-      };
-      const confirmLoss=()=>{
-        if(!lossReason)return alert("Selecione o motivo");
-        setProposals(p=>p.map(x=>x.id===lossModal?{...x,status:"perdido",lossReason}:x));
-        setLossModal(null);setLossReason("");
-      };
-
-      const addToQueue=()=>{
-        const phone=newLeadPhone.trim();
-        if(!phone)return alert("Informe o número");
-        const b=BOT_FLOW[0];const bt=typeof b.bot==="function"?b.bot({}):b.bot;
-        setQueue(p=>[{id:Date.now(),phone,status:"bot",botStep:0,data:{},consultant:"",createdAt:Date.now(),messages:[{from:"bot",text:bt,ts:Date.now()}]},...p]);
-        setNewLeadPhone("");
-      };
-      const updateLead=(upd)=>setQueue(p=>p.map(l=>l.id===upd.id?upd:l));
-      const assumeLead=(lead)=>{
-        updateLead({...lead,status:"atendendo",consultant});
-        if(lead.data.name&&lead.data.cpf&&!clients.find(c=>c.cpf===lead.data.cpf)){
-          setClients(p=>[...p,{...emptyC,id:Date.now(),name:lead.data.name,cpf:lead.data.cpf,phone:lead.phone,product:lead.data.product||PRODUCTS[0],salary:lead.data.salary||"",origin:"WhatsApp",consultant,notes:"Via fila WhatsApp",createdAt:new Date().toLocaleDateString("pt-BR")}]);
-        }
-      };
-
-      const openWA=(client,msg="")=>{
-        const tpls={"FGTS / Saque-Aniversário":(n)=>`Olá ${n}! 👋 Você pode antecipar seu *FGTS* hoje mesmo! Me manda seu CPF! 🚀`,"Crédito CLT":(n)=>`Olá ${n}! 😊 Tem crédito disponível pelo *Consignado CLT*! Taxa a partir de 1,8% a.m. Quer simular? 👇`,"Servidor Federal / SIAPE":(n)=>`Olá ${n}! Acesso ao *Consignado SIAPE* com as melhores taxas! A partir de 1,5% a.m. Vamos simular? 😊`};
-        const fn=tpls[client.product]||(n=>`Olá ${n}! Posso te ajudar com crédito? 😊`);
-        const m=msg||fn(client.name.split(" ")[0]);
-        window.open(`https://wa.me/55${client.phone.replace(/\D/g,"")}?text=${encodeURIComponent(m)}`,"_blank");
-      };
-
-      const callAI=async()=>{
-        setAiLoading(true);setAiResponse("");
-        let prompt="";
-        if(aiMode==="message")prompt=`Você é especialista em crédito consignado. Crie uma mensagem de WhatsApp persuasiva para o produto ${aiProduct} para ${aiClientName||"cliente"}. Contexto: ${aiInput||"abordagem inicial"}. Máximo 150 palavras.`;
-        else if(aiMode==="objection")prompt=`Especialista em vendas de crédito. O cliente disse: "${aiInput}". Crie resposta de contorno de objeção empática. Produto: ${aiProduct}. Máximo 100 palavras.`;
-        else if(aiMode==="summary"){const c=clients.find(x=>String(x.id)===aiInput);if(!c){setAiResponse("Cliente não encontrado.");setAiLoading(false);return;}prompt=`Resumo executivo do cliente:\nNome: ${c.name}\nProduto: ${c.product}\nSalário: R$ ${c.salary}\nMargem: R$ ${c.margin}\nStatus: ${fLabel(c.status)}\nNotas: ${c.notes}\nDestaque oportunidades. Máximo 120 palavras.`;}
-        try{
-          const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,messages:[{role:"user",content:prompt}]})});
-          const data=await res.json();
-          setAiResponse(data.content?.[0]?.text||"Erro ao gerar.");
-        }catch{setAiResponse("Erro de conexão.");}
-        setAiLoading(false);
-      };
-
-      const todayAgenda=agenda.filter(a=>a.date===today&&!a.done);
-      const waitingQ=queue.filter(l=>l.status==="aguardando").length;
-      const totalComm=commissions.reduce((s,c)=>s+(parseFloat(c.received)||0),0);
-      const pendComm=commissions.filter(c=>c.status==="Pendente").reduce((s,c)=>s+(parseFloat(c.expected)||0),0);
-      const totalReleased=proposals.filter(p=>p.status==="pago").reduce((s,p)=>s+(parseFloat(p.value)||0),0);
-      const hotProposals=proposals.filter(p=>["proposta_enviada","aprovado_assinatura","digitacao"].includes(p.status));
-      const pendingDocs=proposals.filter(p=>p.status==="aguardando_docs");
-      const filteredClients=clients.filter(c=>{
-        const ms=c.name.toLowerCase().includes(search.toLowerCase())||c.cpf.includes(search)||c.phone.includes(search);
-        const mst=filterStatus==="all"||c.status===filterStatus;
-        return ms&&mst;
-      });
-
-      const TABS=[
-        {id:"dashboard",label:"📊 Dashboard"},
-        {id:"queue",label:`💬 Fila${waitingQ>0?` (${waitingQ})`:""}`},
-        {id:"clients",label:"👥 Clientes"},
-        {id:"funnel",label:"📋 Funil"},
-        {id:"proposals",label:"📝 Propostas"},
-        {id:"commissions",label:"💰 Comissões"},
-        {id:"agenda",label:"📅 Agenda"},
-        {id:"quickmsgs",label:"⚡ Respostas"},
-        {id:"ai",label:"🤖 IA"},
-        {id:"reports",label:"📈 Relatórios"},
-      ];
-
-      return(
-        <div style={{fontFamily:"Inter,sans-serif",background:"#f8fafc",minHeight:"100vh"}}>
-          {/* HEADER */}
-          <div style={{background:"linear-gradient(135deg,#1e3a8a,#2563eb)",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <div style={{width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:15,color:"white",border:"1.5px solid rgba(255,255,255,0.3)"}}>CP</div>
-              <div>
-                <div style={{color:"white",fontWeight:800,fontSize:17}}>Corban<span style={{color:"#60a5fa"}}>PRO</span></div>
-                <div style={{color:"#bfdbfe",fontSize:11}}>CRM para Correspondente Bancário</div>
-              </div>
+      {/* ── CHAT ── */}
+      {screen==="chat"&&<>
+        <div style={{width:280,background:"white",display:"flex",flexDirection:"column",borderRight:"1px solid #e2e8f0",flexShrink:0}}>
+          <div style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+              <div style={{fontWeight:700,fontSize:14,color:"#1e293b"}}>Conversas</div>
+              <button onClick={()=>setShowNC(true)} style={S.b("#3b82f6","#fff","4px 9px")}>+ Novo</button>
             </div>
-            <select value={consultant} onChange={e=>setConsultant(e.target.value)} style={{background:"rgba(255,255,255,0.15)",border:"1px solid rgba(255,255,255,0.3)",borderRadius:8,color:"white",padding:"6px 10px",fontSize:12,cursor:"pointer"}}>
-              {CONSULTANTS.map(c=><option key={c} value={c} style={{color:"#1e293b"}}>{c}</option>)}
-            </select>
+            <div style={{position:"relative"}}>
+              <input placeholder="Buscar..." value={srch} onChange={e=>setSrch(e.target.value)} style={{...S.i,paddingLeft:27,fontSize:12}}/>
+              <span style={{position:"absolute",left:8,top:8,fontSize:12,color:"#94a3b8"}}>🔍</span>
+            </div>
           </div>
-
-          {/* TABS */}
-          <div style={{background:"white",borderBottom:"1px solid #e2e8f0",display:"flex",overflowX:"auto",padding:"0 12px"}}>
-            {TABS.map(t=>(
-              <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"11px 12px",border:"none",background:"none",cursor:"pointer",fontSize:12,fontWeight:tab===t.id?700:400,color:tab===t.id?"#2563eb":"#64748b",borderBottom:tab===t.id?"2px solid #2563eb":"2px solid transparent",whiteSpace:"nowrap"}}>
-                {t.label}
+          <div style={{display:"flex",borderBottom:"1px solid #f1f5f9"}}>
+            {[["esperando","Esperando",contacts.filter(c=>c.status==="novo_lead").length],["atendimentos","Atendimentos",contacts.length],["automatico","Auto",0]].map(([id,label,count])=>(
+              <button key={id} onClick={()=>setCTab(id)} style={{flex:1,padding:"8px 2px",border:"none",background:"none",cursor:"pointer",fontSize:10,fontWeight:cTab===id?700:400,color:cTab===id?"#3b82f6":"#64748b",borderBottom:cTab===id?"2px solid #3b82f6":"2px solid transparent",display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
+                <span>{label}</span>
+                {count>0&&<span style={{background:cTab===id?"#3b82f6":"#e2e8f0",color:cTab===id?"white":"#64748b",borderRadius:8,padding:"0 4px",fontSize:9,fontWeight:700}}>{count}</span>}
               </button>
             ))}
           </div>
-
-          <div style={{padding:16,maxWidth:1200,margin:"0 auto"}}>
-
-            {/* DASHBOARD */}
-            {tab==="dashboard"&&(
-              <div>
-                {waitingQ>0&&<div style={{background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:10,padding:12,marginBottom:16,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                  <span style={{color:"#c2410c",fontWeight:600}}>🔔 {waitingQ} cliente(s) aguardando na fila!</span>
-                  <button onClick={()=>setTab("queue")} style={btn("#ea580c")}>Ver Fila →</button>
-                </div>}
-                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginBottom:20}}>
-                  {[
-                    {label:"Total Clientes",value:clients.length,icon:"👥",color:"#3b82f6"},
-                    {label:"Fila WA",value:waitingQ,icon:"💬",color:"#25d366"},
-                    {label:"Propostas Quentes",value:hotProposals.length,icon:"🔥",color:"#f97316"},
-                    {label:"Pend. Documentos",value:pendingDocs.length,icon:"📄",color:"#eab308"},
-                    {label:"Valor Liberado",value:`R$ ${totalReleased.toLocaleString("pt-BR",{minimumFractionDigits:2})}`,icon:"💰",color:"#059669"},
-                    {label:"A Receber",value:`R$ ${pendComm.toLocaleString("pt-BR",{minimumFractionDigits:2})}`,icon:"⏳",color:"#8b5cf6"},
-                    {label:"Tarefas Hoje",value:todayAgenda.length,icon:"📅",color:"#ef4444"},
-                  ].map(m=>(
-                    <div key={m.label} style={{...card,borderLeft:`4px solid ${m.color}`,padding:14}}>
-                      <div style={{fontSize:22,marginBottom:2}}>{m.icon}</div>
-                      <div style={{fontSize:18,fontWeight:800,color:m.color}}>{m.value}</div>
-                      <div style={{fontSize:11,color:"#64748b"}}>{m.label}</div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-                  <div style={card}>
-                    <div style={{fontWeight:700,marginBottom:12}}>📣 Origem dos Leads</div>
-                    <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-                      {ORIGINS.map(o=>{const count=clients.filter(c=>c.origin===o).length;if(!count)return null;return<div key={o} style={{background:(originColor[o]||"#94a3b8")+"18",borderLeft:`3px solid ${originColor[o]||"#94a3b8"}`,borderRadius:6,padding:"6px 10px",minWidth:80}}><div style={{fontSize:11,fontWeight:700,color:originColor[o]||"#64748b"}}>{o}</div><div style={{fontSize:18,fontWeight:800}}>{count}</div></div>;})}
-                      {clients.length===0&&<span style={{color:"#94a3b8",fontSize:13}}>Sem dados ainda.</span>}
-                    </div>
+          <div style={{flex:1,overflowY:"auto"}}>
+            {filC.length===0&&<div style={{textAlign:"center",color:"#94a3b8",padding:22,fontSize:12}}>Nenhuma conversa.<br/><button onClick={()=>setShowNC(true)} style={{...S.b("#3b82f6","#fff","4px 9px"),marginTop:8}}>+ Criar</button></div>}
+            {filC.map(c=>{const sc=score(c);const scl=SC[sc];const isA=ac?.id===c.id;return(
+              <div key={c.id} onClick={()=>setAc(contacts.find(x=>x.id===c.id)||c)} style={{padding:"8px 11px",cursor:"pointer",background:isA?"#eff6ff":"white",borderBottom:"1px solid #f8fafc",borderLeft:isA?"3px solid #3b82f6":"3px solid transparent"}}>
+                <div style={{display:"flex",alignItems:"flex-start",gap:8}}>
+                  <div style={{position:"relative",flexShrink:0}}>
+                    <div style={{width:34,height:34,borderRadius:"50%",background:fC(c.status),display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontWeight:700,fontSize:13}}>{c.name?.[0]?.toUpperCase()||"?"}</div>
+                    <div style={{position:"absolute",bottom:0,right:0,width:9,height:9,borderRadius:"50%",background:scl.color,border:"2px solid white"}}/>
                   </div>
-                  <div style={card}>
-                    <div style={{fontWeight:700,marginBottom:12}}>📋 Funil Resumido</div>
-                    {FUNNEL.slice(0,8).map(f=>{const count=proposals.filter(p=>p.status===f.id).length;return<div key={f.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:5}}><div style={{width:8,height:8,borderRadius:"50%",background:f.color}}/><div style={{fontSize:12,flex:1}}>{f.label}</div><div style={{fontWeight:700,fontSize:13,color:f.color}}>{count}</div></div>;})}
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",justifyContent:"space-between"}}>
+                      <div style={{fontWeight:600,fontSize:12,color:"#1e293b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</div>
+                      <div style={{fontSize:10,color:"#94a3b8",flexShrink:0}}>{tAgo(c.lastMsgTs||c.createdAt)}</div>
+                    </div>
+                    <div style={{display:"flex",gap:3,margin:"2px 0"}}>
+                      {(c.tags||[]).slice(0,1).map(t=><span key={t} style={{background:tC(t)+"20",color:tC(t),borderRadius:4,padding:"0 4px",fontSize:9,fontWeight:700}}>{tLb(t)}</span>)}
+                      <span style={{background:scl.color+"15",color:scl.color,borderRadius:4,padding:"0 4px",fontSize:9,fontWeight:700}}>{scl.label}</span>
+                    </div>
+                    <div style={{fontSize:10,color:"#94a3b8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.lastMsg||c.phone}</div>
                   </div>
                 </div>
               </div>
-            )}
-
-            {/* FILA */}
-            {tab==="queue"&&(
-              <div>
-                <div style={{...card,marginBottom:14}}>
-                  <div style={{fontWeight:700,marginBottom:10}}>➕ Novo Lead</div>
-                  <div style={{display:"flex",gap:10}}>
-                    <input value={newLeadPhone} onChange={e=>setNewLeadPhone(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addToQueue()} placeholder="Número WhatsApp com DDD" style={{...inpS,flex:1}}/>
-                    <button onClick={addToQueue} style={btn("#25d366")}>+ Adicionar</button>
-                  </div>
-                </div>
-                <div style={{display:"grid",gap:10}}>
-                  {queue.map(lead=>{
-                    const sc={"bot":"#3b82f6","aguardando":"#f59e0b","atendendo":"#10b981"}[lead.status];
-                    const sl={"bot":"🤖 Bot ativo","aguardando":"⏳ Aguardando","atendendo":"✅ Atendendo"}[lead.status];
-                    const isExp=expandedLead===lead.id;
-                    return<div key={lead.id} style={{...card,padding:0,overflow:"hidden",border:`1px solid ${sc}30`}}>
-                      <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",cursor:"pointer"}} onClick={()=>setExpandedLead(isExp?null:lead.id)}>
-                        <div style={{width:38,height:38,borderRadius:"50%",background:"#dcfce7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>📱</div>
-                        <div style={{flex:1}}>
-                          <div style={{fontWeight:700}}>{lead.data.name||lead.phone}</div>
-                          <div style={{fontSize:11,color:"#64748b"}}>{lead.phone} · {timeAgo(lead.createdAt)} atrás</div>
-                        </div>
-                        <span style={{...tag(sc),padding:"4px 10px",fontSize:12}}>{sl}</span>
-                        <span style={{color:"#94a3b8"}}>{isExp?"▲":"▼"}</span>
-                      </div>
-                      {isExp&&<div>
-                        <BotChat lead={lead} onUpdate={updateLead}/>
-                        <div style={{display:"flex",gap:8,padding:10,background:"#f8fafc",borderTop:"1px solid #e2e8f0"}}>
-                          {lead.status==="aguardando"&&<button onClick={()=>assumeLead(lead)} style={{...btn("#2563eb"),flex:1}}>🙋 Assumir Atendimento</button>}
-                          {lead.status==="atendendo"&&<div style={{flex:1,background:"#d1fae5",borderRadius:8,padding:"8px",fontSize:13,fontWeight:600,color:"#065f46",textAlign:"center"}}>Atendendo: {lead.consultant}</div>}
-                          <button onClick={()=>{if(confirm("Encerrar?"))setQueue(p=>p.filter(l=>l.id!==lead.id));}} style={btn("#fee2e2","#ef4444")}>✕</button>
-                        </div>
-                      </div>}
-                    </div>;
-                  })}
-                  {queue.length===0&&<div style={{textAlign:"center",color:"#94a3b8",padding:40}}>Nenhum lead na fila.</div>}
-                </div>
-              </div>
-            )}
-
-            {/* CLIENTES */}
-            {tab==="clients"&&(
-              <div>
-                <div style={{display:"flex",gap:10,marginBottom:14,flexWrap:"wrap"}}>
-                  <input placeholder="🔍 Buscar..." value={search} onChange={e=>setSearch(e.target.value)} style={{...inpS,flex:1,minWidth:180}}/>
-                  <select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)} style={{...inpS,width:"auto"}}>
-                    <option value="all">Todos os status</option>
-                    {FUNNEL.map(f=><option key={f.id} value={f.id}>{f.label}</option>)}
-                  </select>
-                  <button onClick={()=>{setCf(emptyC);setShowForm("client");}} style={btn("#2563eb")}>+ Novo Cliente</button>
-                </div>
-                {showForm==="client"&&(
-                  <div style={{...card,marginBottom:14}}>
-                    <div style={{fontWeight:700,marginBottom:12}}>{cf.id?"Editar":"Novo"} Cliente</div>
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(190px,1fr))",gap:10}}>
-                      <FF label="Nome completo *"><input value={cf.name} onChange={e=>setCf(p=>({...p,name:e.target.value}))} style={inpS}/></FF>
-                      <FF label="CPF *"><input value={cf.cpf} onChange={e=>setCf(p=>({...p,cpf:e.target.value}))} style={inpS}/></FF>
-                      <FF label="WhatsApp"><input value={cf.phone} onChange={e=>setCf(p=>({...p,phone:e.target.value}))} style={inpS}/></FF>
-                      <FF label="Telefone 2"><input value={cf.phone2} onChange={e=>setCf(p=>({...p,phone2:e.target.value}))} style={inpS}/></FF>
-                      <FF label="E-mail"><input value={cf.email} onChange={e=>setCf(p=>({...p,email:e.target.value}))} style={inpS}/></FF>
-                      <FF label="Cidade/Estado"><input value={cf.city} onChange={e=>setCf(p=>({...p,city:e.target.value}))} style={inpS}/></FF>
-                      <FF label="Produto"><select value={cf.product} onChange={e=>setCf(p=>({...p,product:e.target.value}))} style={inpS}>{PRODUCTS.map(x=><option key={x}>{x}</option>)}</select></FF>
-                      <FF label="Banco"><select value={cf.bank} onChange={e=>setCf(p=>({...p,bank:e.target.value}))} style={inpS}><option value="">Selecione...</option>{BANKS.map(x=><option key={x}>{x}</option>)}</select></FF>
-                      <FF label="Origem"><select value={cf.origin} onChange={e=>setCf(p=>({...p,origin:e.target.value}))} style={inpS}>{ORIGINS.map(x=><option key={x}>{x}</option>)}</select></FF>
-                      <FF label="Status"><select value={cf.status} onChange={e=>setCf(p=>({...p,status:e.target.value}))} style={inpS}>{FUNNEL.map(f=><option key={f.id} value={f.id}>{f.label}</option>)}</select></FF>
-                      <FF label="Salário (R$)"><input type="number" value={cf.salary} onChange={e=>setCf(p=>({...p,salary:e.target.value}))} style={inpS}/></FF>
-                      <FF label="Margem (R$)"><input type="number" value={cf.margin} onChange={e=>setCf(p=>({...p,margin:e.target.value}))} style={inpS}/></FF>
-                      <FF label="Pré-aprovado (R$)"><input type="number" value={cf.preApproved} onChange={e=>setCf(p=>({...p,preApproved:e.target.value}))} style={inpS}/></FF>
-                      <FF label="Data de Retorno"><input type="date" value={cf.returnDate} onChange={e=>setCf(p=>({...p,returnDate:e.target.value}))} style={inpS}/></FF>
-                      <FF label="Consultor"><select value={cf.consultant} onChange={e=>setCf(p=>({...p,consultant:e.target.value}))} style={inpS}>{CONSULTANTS.map(x=><option key={x}>{x}</option>)}</select></FF>
-                      <div style={{gridColumn:"1/-1"}}><FF label="Observações"><textarea value={cf.notes} onChange={e=>setCf(p=>({...p,notes:e.target.value}))} style={{...inpS,height:60,resize:"vertical"}}/></FF></div>
-                    </div>
-                    <div style={{display:"flex",gap:8,marginTop:12}}>
-                      <button onClick={saveClient} style={btn("#10b981")}>💾 Salvar</button>
-                      <button onClick={()=>{setShowForm(null);setCf(emptyC);}} style={btn("#f1f5f9","#64748b")}>Cancelar</button>
-                    </div>
-                  </div>
-                )}
-                <div style={{display:"grid",gap:14}}>
-                  {filteredClients.map(c=>{
-                    const cp=proposals.filter(p=>String(p.clientId)===String(c.id));
-                    const lp=cp[cp.length-1];
-                    const isOD=c.returnDate&&c.returnDate<today;
-                    const isT=c.returnDate===today;
-                    return<div key={c.id} style={{background:"white",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.07)",border:"1px solid #f1f5f9"}}>
-                      <div style={{height:4,background:fColor(c.status)}}/>
-                      <div style={{padding:16}}>
-                        <div style={{display:"flex",alignItems:"flex-start",gap:14,marginBottom:12}}>
-                          <div style={{width:50,height:50,borderRadius:14,background:`linear-gradient(135deg,${fColor(c.status)},${fColor(c.status)}99)`,display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontWeight:800,fontSize:20,flexShrink:0}}>{c.name[0].toUpperCase()}</div>
-                          <div style={{flex:1,minWidth:0}}>
-                            <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:3}}>
-                              <div style={{fontWeight:800,fontSize:15,color:"#0f172a"}}>{c.name}</div>
-                              {c.returnDate&&<span style={{background:isOD?"#fee2e2":isT?"#fef3c7":"#eff6ff",color:isOD?"#ef4444":isT?"#f59e0b":"#3b82f6",borderRadius:6,padding:"2px 8px",fontSize:10,fontWeight:700}}>{isOD?"⚠️ Atrasado":isT?"🔔 Hoje":`📅 ${c.returnDate}`}</span>}
-                            </div>
-                            <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:6}}>
-                              {c.cpf&&<span style={{fontSize:12,color:"#64748b"}}>🪪 {c.cpf}</span>}
-                              {c.phone&&<span style={{fontSize:12,color:"#64748b"}}>📱 {c.phone}</span>}
-                              {c.city&&<span style={{fontSize:12,color:"#64748b"}}>📍 {c.city}</span>}
-                            </div>
-                            <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-                              <span style={{...tag(fColor(c.status)),padding:"2px 8px",fontSize:10}}>{fLabel(c.status)}</span>
-                              <span style={{...tag(originColor[c.origin]||"#94a3b8"),padding:"2px 8px",fontSize:10}}>📣 {c.origin}</span>
-                              <span style={{background:"#f1f5f9",color:"#475569",borderRadius:20,padding:"2px 8px",fontSize:10,fontWeight:600}}>{c.product}</span>
-                            </div>
-                          </div>
-                          <div style={{display:"flex",gap:6,flexShrink:0,flexWrap:"wrap"}}>
-                            {c.phone&&<button onClick={()=>openWA(c)} style={{...btn("#25d366"),padding:"6px 10px",fontSize:11}}>📱 WA</button>}
-                            <button onClick={()=>{setCf({...c});setShowForm("client");}} style={{...btn("#eff6ff","#2563eb"),padding:"6px 10px",fontSize:11}}>✏️</button>
-                            <button onClick={()=>{setPf({...emptyP,clientId:String(c.id),product:c.product});setShowForm("proposal");setTab("proposals");}} style={{...btn("#f5f3ff","#7c3aed"),padding:"6px 10px",fontSize:11}}>+ Proposta</button>
-                            <button onClick={()=>{if(confirm("Excluir?"))setClients(p=>p.filter(x=>x.id!==c.id));}} style={{...btn("#fff1f2","#e11d48"),padding:"6px 8px",fontSize:11}}>🗑</button>
-                          </div>
-                        </div>
-                        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:8,marginBottom:lp||c.notes?10:0}}>
-                          {[["💼 Salário",c.salary?`R$ ${parseFloat(c.salary).toLocaleString("pt-BR")}`:"—","#64748b"],["📊 Margem",c.margin?`R$ ${parseFloat(c.margin).toLocaleString("pt-BR")}`:"—","#3b82f6"],["✅ Pré-aprovado",c.preApproved?`R$ ${parseFloat(c.preApproved).toLocaleString("pt-BR")}`:"—","#10b981"],["📋 Propostas",cp.length,"#6366f1"]].map(([l,v,col])=>(
-                            <div key={l} style={{background:"#f8fafc",borderRadius:10,padding:"7px 10px",borderLeft:`3px solid ${col}`}}>
-                              <div style={{fontSize:10,color:"#94a3b8",marginBottom:1}}>{l}</div>
-                              <div style={{fontSize:13,fontWeight:700,color:v==="—"?"#cbd5e1":col}}>{v}</div>
-                            </div>
-                          ))}
-                        </div>
-                        {lp&&<div style={{background:"#f8fafc",borderRadius:10,padding:"7px 12px",marginBottom:c.notes?8:0,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                          <div style={{width:6,height:6,borderRadius:"50%",background:fColor(lp.status)}}/>
-                          <span style={{fontSize:11,color:"#64748b",fontWeight:600}}>Última proposta:</span>
-                          <span style={{fontSize:11}}>{lp.bank} · {lp.product}</span>
-                          {lp.value&&<span style={{fontSize:11,fontWeight:700,color:"#10b981"}}>R$ {parseFloat(lp.value).toLocaleString("pt-BR")}</span>}
-                          <span style={{...tag(fColor(lp.status)),padding:"2px 8px",fontSize:10,marginLeft:"auto"}}>{fLabel(lp.status)}</span>
-                        </div>}
-                        {c.notes&&<div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:10,padding:"7px 10px",fontSize:12,color:"#92400e"}}>📝 {c.notes}</div>}
-                      </div>
-                    </div>;
-                  })}
-                  {filteredClients.length===0&&<div style={{textAlign:"center",color:"#94a3b8",padding:40}}>Nenhum cliente encontrado.</div>}
-                </div>
-              </div>
-            )}
-
-            {/* FUNIL */}
-            {tab==="funnel"&&(
-              <div style={{overflowX:"auto"}}>
-                <div style={{display:"flex",gap:10,minWidth:"max-content",paddingBottom:8}}>
-                  {FUNNEL.map(f=>{
-                    const items=proposals.filter(p=>p.status===f.id);
-                    return<div key={f.id} style={{minWidth:180,background:"#f8fafc",borderRadius:12,padding:10,border:`1px solid ${f.color}30`}}>
-                      <div style={{fontSize:12,fontWeight:700,color:f.color,marginBottom:8,display:"flex",justifyContent:"space-between"}}><span>{f.label}</span><span style={{background:f.color+"20",borderRadius:10,padding:"1px 7px"}}>{items.length}</span></div>
-                      {items.map(p=>{const c=clients.find(x=>String(x.id)===String(p.clientId));return<div key={p.id} style={{background:"white",borderRadius:8,padding:8,marginBottom:6,boxShadow:"0 1px 3px rgba(0,0,0,0.08)",borderLeft:`3px solid ${f.color}`}}>
-                        <div style={{fontWeight:600,fontSize:12}}>{c?.name?.split(" ")[0]||"—"}</div>
-                        <div style={{fontSize:11,color:"#64748b"}}>{p.product}</div>
-                        {p.value&&<div style={{fontSize:12,fontWeight:700,color:"#10b981"}}>R$ {parseFloat(p.value).toLocaleString("pt-BR")}</div>}
-                      </div>;})}
-                      {items.length===0&&<div style={{color:"#cbd5e1",fontSize:12,textAlign:"center",padding:10}}>Vazio</div>}
-                    </div>;
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* PROPOSTAS */}
-            {tab==="proposals"&&(
-              <div>
-                <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
-                  <button onClick={()=>{setPf(emptyP);setShowForm("proposal");}} style={btn("#2563eb")}>+ Nova Proposta</button>
-                </div>
-                {showForm==="proposal"&&(
-                  <div style={{...card,marginBottom:14}}>
-                    <div style={{fontWeight:700,marginBottom:12}}>Nova Proposta</div>
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10}}>
-                      <FF label="Cliente *"><select value={pf.clientId} onChange={e=>setPf(p=>({...p,clientId:e.target.value}))} style={inpS}><option value="">Selecione...</option>{clients.map(c=><option key={c.id} value={String(c.id)}>{c.name}</option>)}</select></FF>
-                      <FF label="Produto"><select value={pf.product} onChange={e=>setPf(p=>({...p,product:e.target.value}))} style={inpS}>{PRODUCTS.map(x=><option key={x}>{x}</option>)}</select></FF>
-                      <FF label="Banco"><select value={pf.bank} onChange={e=>setPf(p=>({...p,bank:e.target.value}))} style={inpS}><option value="">Selecione...</option>{BANKS.map(x=><option key={x}>{x}</option>)}</select></FF>
-                      <FF label="Valor (R$)"><input type="number" value={pf.value} onChange={e=>setPf(p=>({...p,value:e.target.value}))} style={inpS}/></FF>
-                      <FF label="Parcelas"><input type="number" value={pf.installments} onChange={e=>setPf(p=>({...p,installments:e.target.value}))} style={inpS}/></FF>
-                      <FF label="Taxa (% a.m.)"><input type="number" value={pf.rate} onChange={e=>setPf(p=>({...p,rate:e.target.value}))} style={inpS}/></FF>
-                      <FF label="Comissão (R$)"><input type="number" value={pf.commission} onChange={e=>setPf(p=>({...p,commission:e.target.value}))} style={inpS}/></FF>
-                      <FF label="Status"><select value={pf.status} onChange={e=>setPf(p=>({...p,status:e.target.value}))} style={inpS}>{FUNNEL.map(f=><option key={f.id} value={f.id}>{f.label}</option>)}</select></FF>
-                    </div>
-                    <div style={{display:"flex",gap:8,marginTop:12}}>
-                      <button onClick={saveProposal} style={btn("#10b981")}>Salvar</button>
-                      <button onClick={()=>setShowForm(null)} style={btn("#f1f5f9","#64748b")}>Cancelar</button>
-                    </div>
-                  </div>
-                )}
-                {lossModal&&(
-                  <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
-                    <div style={{...card,maxWidth:400,width:"90%",padding:20}}>
-                      <div style={{fontWeight:700,marginBottom:12}}>❌ Motivo da Perda</div>
-                      <select value={lossReason} onChange={e=>setLossReason(e.target.value)} style={{...inpS,marginBottom:14}}>
-                        <option value="">Selecione...</option>
-                        {LOSS_REASONS.map(r=><option key={r}>{r}</option>)}
-                      </select>
-                      <div style={{display:"flex",gap:8}}>
-                        <button onClick={confirmLoss} style={btn("#ef4444")}>Confirmar</button>
-                        <button onClick={()=>setLossModal(null)} style={btn("#f1f5f9","#64748b")}>Cancelar</button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                <div style={{display:"grid",gap:10}}>
-                  {proposals.map(p=>{
-                    const c=clients.find(x=>String(x.id)===String(p.clientId));
-                    const fc=fColor(p.status);
-                    const cd=CHECKLIST_ITEMS.filter(i=>p.checklist?.[i]).length;
-                    return<div key={p.id} style={{...card,borderLeft:`4px solid ${fc}`,padding:12}}>
-                      <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-                        <div style={{flex:1,minWidth:160}}>
-                          <div style={{fontWeight:700}}>{c?.name||"—"}</div>
-                          <div style={{fontSize:11,color:"#64748b"}}>{p.product} · {p.bank} · {p.createdAt}</div>
-                          {p.lossReason&&<div style={{fontSize:11,color:"#ef4444"}}>Motivo: {p.lossReason}</div>}
-                        </div>
-                        {p.value&&<div><div style={{fontSize:10,color:"#94a3b8"}}>Valor</div><div style={{fontWeight:700}}>R$ {parseFloat(p.value).toLocaleString("pt-BR")}</div></div>}
-                        {p.commission&&<div><div style={{fontSize:10,color:"#94a3b8"}}>Comissão</div><div style={{fontWeight:700,color:"#f59e0b"}}>R$ {parseFloat(p.commission).toLocaleString("pt-BR")}</div></div>}
-                        <select value={p.status} onChange={e=>updateProposalStatus(p.id,e.target.value)} style={{border:`1px solid ${fc}`,borderRadius:6,padding:"4px 7px",fontSize:11,color:fc,fontWeight:600,background:fc+"15",cursor:"pointer"}}>
-                          {FUNNEL.map(f=><option key={f.id} value={f.id}>{f.label}</option>)}
-                        </select>
-                        <button onClick={()=>setSelectedProposal(selectedProposal?.id===p.id?null:p)} style={{...btn(cd===CHECKLIST_ITEMS.length?"#10b981":"#f59e0b"),padding:"5px 9px",fontSize:11}}>☑ {cd}/{CHECKLIST_ITEMS.length}</button>
-                        <button onClick={()=>{if(confirm("Excluir?"))setProposals(pr=>pr.filter(x=>x.id!==p.id));}} style={{...btn("#fee2e2","#ef4444"),padding:"5px 9px",fontSize:11}}>🗑</button>
-                      </div>
-                      {selectedProposal?.id===p.id&&(
-                        <div style={{marginTop:10,padding:10,background:"#f8fafc",borderRadius:8}}>
-                          <div style={{fontSize:12,fontWeight:700,marginBottom:8}}>☑ Checklist</div>
-                          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:5}}>
-                            {CHECKLIST_ITEMS.map(item=>(
-                              <label key={item} style={{display:"flex",alignItems:"center",gap:6,fontSize:12,cursor:"pointer"}}>
-                                <input type="checkbox" checked={!!p.checklist?.[item]} onChange={e=>setProposals(pr=>pr.map(x=>x.id===p.id?{...x,checklist:{...x.checklist,[item]:e.target.checked}}:x))} style={{width:14,height:14}}/>
-                                <span style={{color:p.checklist?.[item]?"#10b981":"#374151"}}>{item}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>;
-                  })}
-                  {proposals.length===0&&<div style={{textAlign:"center",color:"#94a3b8",padding:40}}>Nenhuma proposta.</div>}
-                </div>
-              </div>
-            )}
-
-            {/* COMISSÕES */}
-            {tab==="commissions"&&(
-              <div>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:12,marginBottom:16}}>
-                  {[{l:"Recebido",v:`R$ ${totalComm.toLocaleString("pt-BR",{minimumFractionDigits:2})}`,c:"#10b981"},{l:"A Receber",v:`R$ ${pendComm.toLocaleString("pt-BR",{minimumFractionDigits:2})}`,c:"#f59e0b"},{l:"Total Liberado",v:`R$ ${totalReleased.toLocaleString("pt-BR",{minimumFractionDigits:2})}`,c:"#059669"}].map(m=>(
-                    <div key={m.l} style={{...card,borderLeft:`4px solid ${m.c}`,padding:14}}><div style={{fontSize:11,color:"#64748b"}}>{m.l}</div><div style={{fontSize:18,fontWeight:800,color:m.c}}>{m.v}</div></div>
-                  ))}
-                </div>
-                <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
-                  <button onClick={()=>setShowForm("comm")} style={btn("#2563eb")}>+ Registrar</button>
-                </div>
-                {showForm==="comm"&&(
-                  <div style={{...card,marginBottom:14}}>
-                    <div style={{fontWeight:700,marginBottom:12}}>Nova Comissão</div>
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10}}>
-                      <FF label="Proposta"><select value={cmf.proposalId} onChange={e=>setCmf(p=>({...p,proposalId:e.target.value}))} style={inpS}><option value="">Selecione...</option>{proposals.map(p=>{const c=clients.find(x=>String(x.id)===String(p.clientId));return<option key={p.id} value={String(p.id)}>{c?.name} — {p.product}</option>;})}</select></FF>
-                      <FF label="Previsto (R$)"><input type="number" value={cmf.expected} onChange={e=>setCmf(p=>({...p,expected:e.target.value}))} style={inpS}/></FF>
-                      <FF label="Recebido (R$)"><input type="number" value={cmf.received} onChange={e=>setCmf(p=>({...p,received:e.target.value}))} style={inpS}/></FF>
-                      <FF label="Data"><input type="date" value={cmf.date} onChange={e=>setCmf(p=>({...p,date:e.target.value}))} style={inpS}/></FF>
-                      <FF label="Status"><select value={cmf.status} onChange={e=>setCmf(p=>({...p,status:e.target.value}))} style={inpS}>{["Pendente","Recebido","Cancelado"].map(x=><option key={x}>{x}</option>)}</select></FF>
-                    </div>
-                    <div style={{display:"flex",gap:8,marginTop:12}}>
-                      <button onClick={saveComm} style={btn("#10b981")}>Salvar</button>
-                      <button onClick={()=>setShowForm(null)} style={btn("#f1f5f9","#64748b")}>Cancelar</button>
-                    </div>
-                  </div>
-                )}
-                <div style={{display:"grid",gap:8}}>
-                  {commissions.map(c=>{
-                    const p=proposals.find(x=>String(x.id)===String(c.proposalId));
-                    const cl=clients.find(x=>String(x.id)===String(p?.clientId));
-                    const sc={Pendente:"#f59e0b",Recebido:"#10b981",Cancelado:"#ef4444"}[c.status];
-                    return<div key={c.id} style={{...card,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",padding:12}}>
-                      <div style={{flex:1}}><div style={{fontWeight:600}}>{cl?.name||"—"}</div><div style={{fontSize:11,color:"#64748b"}}>{p?.product} · {c.date}</div></div>
-                      <div><div style={{fontSize:10,color:"#94a3b8"}}>Previsto</div><div style={{fontWeight:600}}>R$ {parseFloat(c.expected||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</div></div>
-                      <div><div style={{fontSize:10,color:"#94a3b8"}}>Recebido</div><div style={{fontWeight:700,color:"#10b981"}}>R$ {parseFloat(c.received||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</div></div>
-                      <span style={{...tag(sc),padding:"4px 10px"}}>{c.status}</span>
-                    </div>;
-                  })}
-                  {commissions.length===0&&<div style={{textAlign:"center",color:"#94a3b8",padding:40}}>Nenhuma comissão.</div>}
-                </div>
-              </div>
-            )}
-
-            {/* AGENDA */}
-            {tab==="agenda"&&(
-              <div>
-                <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
-                  <button onClick={()=>{setAf(emptyA);setShowForm("agenda");}} style={btn("#2563eb")}>+ Nova Tarefa</button>
-                </div>
-                {showForm==="agenda"&&(
-                  <div style={{...card,marginBottom:14}}>
-                    <div style={{fontWeight:700,marginBottom:12}}>Nova Tarefa</div>
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10}}>
-                      <FF label="Cliente"><select value={af.clientId} onChange={e=>setAf(p=>({...p,clientId:e.target.value}))} style={inpS}><option value="">Selecione...</option>{clients.map(c=><option key={c.id} value={String(c.id)}>{c.name}</option>)}</select></FF>
-                      <FF label="Tipo"><select value={af.type} onChange={e=>setAf(p=>({...p,type:e.target.value}))} style={inpS}>{["Follow-up","Ligar","Enviar proposta","Cobrar documentos","Reconsultar","Reativação","Outro"].map(x=><option key={x}>{x}</option>)}</select></FF>
-                      <FF label="Data *"><input type="date" value={af.date} onChange={e=>setAf(p=>({...p,date:e.target.value}))} style={inpS}/></FF>
-                      <FF label="Hora"><input type="time" value={af.time} onChange={e=>setAf(p=>({...p,time:e.target.value}))} style={inpS}/></FF>
-                      <div style={{gridColumn:"1/-1"}}><FF label="Observações"><input value={af.notes} onChange={e=>setAf(p=>({...p,notes:e.target.value}))} style={inpS}/></FF></div>
-                    </div>
-                    <div style={{display:"flex",gap:8,marginTop:12}}>
-                      <button onClick={saveAgenda} style={btn("#10b981")}>Salvar</button>
-                      <button onClick={()=>setShowForm(null)} style={btn("#f1f5f9","#64748b")}>Cancelar</button>
-                    </div>
-                  </div>
-                )}
-                <div style={{display:"grid",gap:8}}>
-                  {[...agenda].sort((a,b)=>a.date.localeCompare(b.date)).map(a=>{
-                    const c=clients.find(x=>String(x.id)===String(a.clientId));
-                    const isPast=a.date<today&&!a.done;
-                    const isT=a.date===today;
-                    return<div key={a.id} style={{...card,opacity:a.done?0.5:1,borderLeft:`4px solid ${a.done?"#94a3b8":isPast?"#ef4444":isT?"#f59e0b":"#3b82f6"}`,padding:12}}>
-                      <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-                        <div style={{flex:1}}>
-                          <div style={{fontWeight:600,textDecoration:a.done?"line-through":"none"}}>{a.type}{c?` — ${c.name}`:""}</div>
-                          <div style={{fontSize:11,color:"#64748b"}}>{a.date}{a.time&&` às ${a.time}`}{isPast&&!a.done&&" ⚠️ Atrasado"}</div>
-                          {a.notes&&<div style={{fontSize:11,color:"#94a3b8"}}>{a.notes}</div>}
-                        </div>
-                        {c?.phone&&!a.done&&<button onClick={()=>openWA(c)} style={{...btn("#25d366"),padding:"5px 10px",fontSize:11}}>📱 WA</button>}
-                        <button onClick={()=>setAgenda(p=>p.map(x=>x.id===a.id?{...x,done:!x.done}:x))} style={{...btn(a.done?"#f1f5f9":"#10b981",a.done?"#64748b":"white"),padding:"5px 10px",fontSize:11}}>{a.done?"↩":"✓"}</button>
-                        <button onClick={()=>{if(confirm("Excluir?"))setAgenda(p=>p.filter(x=>x.id!==a.id));}} style={{...btn("#fee2e2","#ef4444"),padding:"5px 8px",fontSize:11}}>🗑</button>
-                      </div>
-                    </div>;
-                  })}
-                  {agenda.length===0&&<div style={{textAlign:"center",color:"#94a3b8",padding:40}}>Nenhuma tarefa.</div>}
-                </div>
-              </div>
-            )}
-
-            {/* RESPOSTAS RÁPIDAS */}
-            {tab==="quickmsgs"&&(
-              <div>
-                <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
-                  <button onClick={()=>setShowForm("quickmsg")} style={btn("#2563eb")}>+ Nova Resposta</button>
-                </div>
-                {showForm==="quickmsg"&&(
-                  <div style={{...card,marginBottom:14}}>
-                    <div style={{fontWeight:700,marginBottom:12}}>Nova Resposta Rápida</div>
-                    <FF label="Nome"><input value={qmf.label} onChange={e=>setQmf(p=>({...p,label:e.target.value}))} style={{...inpS,marginBottom:10}}/></FF>
-                    <FF label="Texto"><textarea value={qmf.text} onChange={e=>setQmf(p=>({...p,text:e.target.value}))} style={{...inpS,height:80,resize:"vertical"}}/></FF>
-                    <div style={{display:"flex",gap:8,marginTop:12}}>
-                      <button onClick={()=>{if(!qmf.label||!qmf.text)return alert("Preencha tudo");setQuickMsgs(p=>[...p,{...qmf}]);setQmf({label:"",text:""});setShowForm(null);}} style={btn("#10b981")}>Salvar</button>
-                      <button onClick={()=>setShowForm(null)} style={btn("#f1f5f9","#64748b")}>Cancelar</button>
-                    </div>
-                  </div>
-                )}
-                <div style={{display:"grid",gap:10}}>
-                  {quickMsgs.map((m,i)=>(
-                    <div key={i} style={card}>
-                      <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
-                        <div style={{flex:1}}>
-                          <div style={{fontWeight:700,fontSize:13,marginBottom:6}}>⚡ {m.label}</div>
-                          <div style={{fontSize:12,color:"#374151",whiteSpace:"pre-wrap",lineHeight:1.5,background:"#f8fafc",padding:10,borderRadius:8}}>{m.text}</div>
-                        </div>
-                        <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                          <button onClick={()=>navigator.clipboard.writeText(m.text)} style={{...btn("#3b82f6"),padding:"5px 10px",fontSize:11}}>📋 Copiar</button>
-                          <button onClick={()=>setActiveQuickMsg(activeQuickMsg===i?null:i)} style={{...btn("#25d366"),padding:"5px 10px",fontSize:11}}>📱 Enviar</button>
-                          <button onClick={()=>{if(confirm("Excluir?"))setQuickMsgs(p=>p.filter((_,j)=>j!==i));}} style={{...btn("#fee2e2","#ef4444"),padding:"5px 8px",fontSize:11}}>🗑</button>
-                        </div>
-                      </div>
-                      {activeQuickMsg===i&&(
-                        <div style={{marginTop:10,padding:10,background:"#eff6ff",borderRadius:8}}>
-                          <div style={{fontSize:12,fontWeight:600,marginBottom:6}}>Enviar para:</div>
-                          <select onChange={e=>{const c=clients.find(x=>String(x.id)===e.target.value);if(c)openWA(c,m.text);}} style={inpS}>
-                            <option value="">Selecione o cliente...</option>
-                            {clients.filter(c=>c.phone).map(c=><option key={c.id} value={String(c.id)}>{c.name}</option>)}
-                          </select>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* IA */}
-            {tab==="ai"&&(
-              <div>
-                <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
-                  {[["message","💬 Mensagem"],["objection","🎯 Objeção"],["summary","📝 Resumo"]].map(([id,label])=>(
-                    <button key={id} onClick={()=>{setAiMode(id);setAiResponse("");}} style={btn(aiMode===id?"#2563eb":"#f1f5f9",aiMode===id?"white":"#64748b")}>{label}</button>
-                  ))}
-                </div>
-                <div style={card}>
-                  {aiMode==="message"&&<div>
-                    <div style={{fontWeight:700,marginBottom:14}}>💬 Gerar Mensagem</div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-                      <FF label="Produto"><select value={aiProduct} onChange={e=>setAiProduct(e.target.value)} style={inpS}>{PRODUCTS.map(x=><option key={x}>{x}</option>)}</select></FF>
-                      <FF label="Nome do Cliente"><input value={aiClientName} onChange={e=>setAiClientName(e.target.value)} style={inpS} placeholder="Ex: João"/></FF>
-                    </div>
-                    <FF label="Contexto (opcional)"><input value={aiInput} onChange={e=>setAiInput(e.target.value)} style={inpS} placeholder="Ex: negativado, quer quitar dívida..."/></FF>
-                  </div>}
-                  {aiMode==="objection"&&<div>
-                    <div style={{fontWeight:700,marginBottom:14}}>🎯 Contornar Objeção</div>
-                    <FF label="Produto"><select value={aiProduct} onChange={e=>setAiProduct(e.target.value)} style={{...inpS,marginBottom:10}}>{PRODUCTS.map(x=><option key={x}>{x}</option>)}</select></FF>
-                    <FF label="O cliente disse:"><input value={aiInput} onChange={e=>setAiInput(e.target.value)} style={inpS} placeholder='Ex: "não tenho interesse"'/></FF>
-                  </div>}
-                  {aiMode==="summary"&&<div>
-                    <div style={{fontWeight:700,marginBottom:14}}>📝 Resumo do Cliente</div>
-                    <FF label="Selecione o cliente"><select value={aiInput} onChange={e=>setAiInput(e.target.value)} style={inpS}><option value="">Selecione...</option>{clients.map(c=><option key={c.id} value={String(c.id)}>{c.name}</option>)}</select></FF>
-                  </div>}
-                  <button onClick={callAI} disabled={aiLoading} style={{...btn(aiLoading?"#94a3b8":"#6366f1"),width:"100%",marginTop:14,padding:"10px"}}>
-                    {aiLoading?"⏳ Gerando...":"✨ Gerar com IA"}
-                  </button>
-                  {aiResponse&&<div style={{marginTop:14,background:"#f0fdf4",border:"1px solid #86efac",borderRadius:10,padding:14}}>
-                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
-                      <span style={{fontSize:12,fontWeight:700,color:"#16a34a"}}>✅ Resposta:</span>
-                      <button onClick={()=>navigator.clipboard.writeText(aiResponse)} style={{...btn("#dcfce7","#16a34a"),padding:"4px 10px",fontSize:11}}>📋 Copiar</button>
-                    </div>
-                    <div style={{fontSize:13,color:"#1e293b",whiteSpace:"pre-wrap",lineHeight:1.6}}>{aiResponse}</div>
-                  </div>}
-                </div>
-              </div>
-            )}
-
-            {/* RELATÓRIOS */}
-            {tab==="reports"&&(
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:16}}>
-                <div style={card}>
-                  <div style={{fontWeight:700,marginBottom:12}}>📊 Conversão por Produto</div>
-                  {PRODUCTS.map(prod=>{
-                    const total=proposals.filter(p=>p.product===prod).length;
-                    const won=proposals.filter(p=>p.product===prod&&p.status==="pago").length;
-                    const pct=total?Math.round((won/total)*100):0;
-                    return total>0?<div key={prod} style={{marginBottom:10}}>
-                      <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}><span>{prod.split("/")[0].trim()}</span><span style={{fontWeight:700}}>{won}/{total} ({pct}%)</span></div>
-                      <div style={{height:6,background:"#f1f5f9",borderRadius:3}}><div style={{height:"100%",width:`${pct}%`,background:"#10b981",borderRadius:3}}/></div>
-                    </div>:null;
-                  })}
-                  {proposals.length===0&&<div style={{color:"#94a3b8",fontSize:13}}>Sem dados.</div>}
-                </div>
-                <div style={card}>
-                  <div style={{fontWeight:700,marginBottom:12}}>❌ Motivos de Perda</div>
-                  {LOSS_REASONS.filter(r=>proposals.some(p=>p.lossReason===r)).map(r=>(
-                    <div key={r} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #f1f5f9"}}>
-                      <span style={{fontSize:12}}>{r}</span>
-                      <span style={{fontWeight:700,color:"#ef4444"}}>{proposals.filter(p=>p.lossReason===r).length}</span>
-                    </div>
-                  ))}
-                  {proposals.filter(p=>p.status==="perdido").length===0&&<div style={{color:"#94a3b8",fontSize:13}}>Sem perdas.</div>}
-                </div>
-                <div style={card}>
-                  <div style={{fontWeight:700,marginBottom:12}}>🔄 Reativar</div>
-                  {clients.filter(c=>["retorno_futuro","bloqueado"].includes(c.status)).map(c=>(
-                    <div key={c.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #f1f5f9"}}>
-                      <div><div style={{fontSize:13,fontWeight:600}}>{c.name}</div><div style={{fontSize:11,color:"#64748b"}}>{c.product}</div></div>
-                      {c.phone&&<button onClick={()=>openWA(c)} style={{...btn("#25d366"),padding:"4px 8px",fontSize:11}}>📱 WA</button>}
-                    </div>
-                  ))}
-                  {clients.filter(c=>["retorno_futuro","bloqueado"].includes(c.status)).length===0&&<div style={{color:"#94a3b8",fontSize:13}}>Nenhum para reativar.</div>}
-                </div>
-              </div>
-            )}
-
+            );})}
           </div>
         </div>
-      );
-    }
 
-    ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
-  </script>
+        {!ac?<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:10,color:"#94a3b8"}}>
+          <div style={{fontSize:44}}>💬</div>
+          <div style={{fontSize:15,fontWeight:600}}>Selecione uma conversa</div>
+          <button onClick={()=>setShowNC(true)} style={S.b("#3b82f6")}>+ Novo Contato</button>
+        </div>:(
+          <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
+            <div style={{background:"white",padding:"8px 13px",borderBottom:"1px solid #e2e8f0",display:"flex",alignItems:"center",gap:8}}>
+              <div style={{width:34,height:34,borderRadius:"50%",background:fC(ac.status),display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontWeight:700,fontSize:14,flexShrink:0}}>{ac.name?.[0]?.toUpperCase()}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:700,fontSize:13}}>{ac.name} <span style={{fontSize:10,color:SC[score(ac)].color}}>{SC[score(ac)].label}</span></div>
+                <div style={{fontSize:10,color:"#64748b"}}>{ac.phone} · {ac.product}</div>
+              </div>
+              <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                <button onClick={()=>setShowNt(!showNt)} style={S.b("#f1f5f9","#374151","4px 7px")}>📋</button>
+                <button onClick={()=>setShowCk(!showCk)} style={S.b("#f1f5f9","#374151","4px 7px")}>☑</button>
+                <button onClick={()=>setShowSim(!showSim)} style={S.b("#f0fdf4","#059669","4px 7px")}>🏦 Sim</button>
+                <button onClick={runRecon} style={S.b("#eff6ff","#2563eb","4px 7px")}>🔄 Recon</button>
+                <button onClick={()=>setShowAI(!showAI)} style={S.b("#f5f3ff","#7c3aed","4px 7px")}>✨ IA</button>
+                <button onClick={()=>setShowTr(!showTr)} style={S.b("#1e3a8a","#fff","4px 7px")}>↗ Transf</button>
+                <button onClick={encerrar} style={S.b("#ef4444","#fff","4px 7px")}>✕</button>
+              </div>
+            </div>
+
+            <div style={{background:"#f8fafc",padding:"3px 11px",borderBottom:"1px solid #f1f5f9",display:"flex",gap:4,alignItems:"center",flexWrap:"wrap",position:"relative"}}>
+              {(ac.tags||[]).map(t=><span key={t} onClick={()=>togTag(t)} style={{background:tC(t)+"20",color:tC(t),borderRadius:4,padding:"1px 5px",fontSize:9,fontWeight:700,cursor:"pointer"}}>{tLb(t)} ×</span>)}
+              <button onClick={()=>setShowTM(!showTM)} style={S.b("#f1f5f9","#64748b","1px 5px")}>+ Tag</button>
+              {showTM&&<div style={{position:"absolute",top:24,left:0,zIndex:200,background:"white",borderRadius:10,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",padding:7,display:"flex",flexDirection:"column",gap:2}}>
+                {TAGS.map(t=><button key={t.id} onClick={()=>togTag(t.id)} style={S.b((ac.tags||[]).includes(t.id)?t.color+"20":"#f8fafc",t.color,"4px 9px")}>{t.label}</button>)}
+              </div>}
+              <div style={{marginLeft:"auto",display:"flex",gap:4}}>
+                <select value={ac.status} onChange={e=>upC("status",e.target.value)} style={{border:`1px solid ${fC(ac.status)}`,borderRadius:5,padding:"2px 5px",fontSize:9,color:fC(ac.status),fontWeight:600,background:fC(ac.status)+"15",cursor:"pointer"}}>
+                  {FUNNEL.map(f=><option key={f.id} value={f.id}>{f.label}</option>)}
+                </select>
+                <select value={ac.consultant} onChange={e=>upC("consultant",e.target.value)} style={{...S.i,width:"auto",fontSize:9,padding:"2px 5px"}}>
+                  {CONSULTANTS.map(c=><option key={c}>{c}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {showAI&&<div style={{background:"#f5f3ff",padding:"7px 13px",borderBottom:"1px solid #ddd6fe"}}>
+              <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:6}}>
+                {[["resposta","💬 Resposta"],["abordagem","🎯 Abordagem"],["objecao","🛡 Objeção"],["resumo","📝 Resumo"]].map(([m,l])=>(
+                  <button key={m} onClick={()=>callAI(m)} disabled={aiLoad} style={S.b("#7c3aed","#fff","4px 8px")}>{aiLoad?"⏳":l}</button>
+                ))}
+              </div>
+              {aiResp&&<div style={{background:"white",borderRadius:8,padding:8,fontSize:12,lineHeight:1.5}}>
+                {aiResp}
+                <div style={{display:"flex",gap:5,marginTop:6}}>
+                  <button onClick={()=>{setMsgIn(aiResp);setShowAI(false);}} style={S.b("#7c3aed","#fff","4px 8px")}>Usar</button>
+                  <button onClick={()=>navigator.clipboard.writeText(aiResp)} style={S.b("#f1f5f9","#374151","4px 8px")}>📋 Copiar</button>
+                </div>
+              </div>}
+            </div>}
+
+            {showSim&&<div style={{background:"#f0fdf4",padding:"7px 13px",borderBottom:"1px solid #86efac"}}>
+              <div style={{fontWeight:600,fontSize:12,marginBottom:5}}>🏦 Simulador</div>
+              <div style={{display:"flex",gap:8,marginBottom:7,flexWrap:"wrap"}}>
+                <div><span style={S.l}>Valor (R$)</span><input type="number" value={simF.value} onChange={e=>setSimF(p=>({...p,value:e.target.value}))} style={{...S.i,width:110,fontSize:12}}/></div>
+                <div><span style={S.l}>Produto</span><select value={simF.product} onChange={e=>setSimF(p=>({...p,product:e.target.value}))} style={{...S.i,width:160,fontSize:12}}>{PRODUCTS.map(x=><option key={x}>{x}</option>)}</select></div>
+                <div style={{display:"flex",alignItems:"flex-end"}}><button onClick={runSim} style={S.b("#059669","#fff","5px 10px")}>Simular</button></div>
+              </div>
+              {simR&&<div style={{maxHeight:160,overflowY:"auto"}}>
+                {simR.res.map((r,i)=>(
+                  <div key={r.bank} style={{display:"flex",alignItems:"center",gap:7,padding:"3px 0",borderBottom:"1px solid #dcfce7",fontSize:11}}>
+                    <span style={{fontWeight:700,color:i===0?"#059669":"#64748b",width:16}}>#{i+1}</span>
+                    <span style={{flex:1,fontWeight:600}}>{r.bank}</span>
+                    <span style={{color:"#3b82f6"}}>{r.rate}%</span>
+                    <span style={{fontWeight:700,color:"#059669"}}>{r.prazo}x R$ {r.parc.toLocaleString("pt-BR",{minimumFractionDigits:2})}</span>
+                    <button onClick={()=>useSimRes(r)} style={S.b("#3b82f6","#fff","2px 6px")}>Usar</button>
+                  </div>
+                ))}
+              </div>}
+            </div>}
+
+            {showNt&&<div style={{background:"#fffbeb",padding:"7px 13px",borderBottom:"1px solid #fde68a"}}>
+              <div style={{fontSize:11,fontWeight:600,marginBottom:4}}>📋 Anotações internas</div>
+              <textarea value={ac.notes||""} onChange={e=>upC("notes",e.target.value)} style={{...S.i,height:48,resize:"none",fontSize:11}} placeholder="Anotações..."/>
+            </div>}
+
+            {showCk&&<div style={{background:"#f0fdf4",padding:"7px 13px",borderBottom:"1px solid #86efac"}}>
+              <div style={{fontSize:11,fontWeight:600,marginBottom:4}}>☑ Checklist ({CHECKLIST_ITEMS.filter(i=>(ac.checklist||{})[i]).length}/{CHECKLIST_ITEMS.length})</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:3}}>
+                {CHECKLIST_ITEMS.map(item=>(
+                  <label key={item} style={{display:"flex",alignItems:"center",gap:4,fontSize:10,cursor:"pointer"}}>
+                    <input type="checkbox" checked={!!(ac.checklist||{})[item]} onChange={e=>upC("checklist",{...(ac.checklist||{}),[item]:e.target.checked})} style={{width:11,height:11}}/>
+                    <span style={{color:(ac.checklist||{})[item]?"#10b981":"#374151"}}>{item}</span>
+                  </label>
+                ))}
+              </div>
+            </div>}
+
+            {showTr&&<div style={{background:"#eff6ff",padding:"6px 13px",borderBottom:"1px solid #bfdbfe",display:"flex",gap:5,alignItems:"center",flexWrap:"wrap"}}>
+              <span style={{fontSize:11,fontWeight:600}}>Transferir:</span>
+              {CONSULTANTS.map(c=><button key={c} onClick={()=>{upC("consultant",c);sendMsg("Transferido para "+c,"system");setShowTr(false);}} style={S.b(ac.consultant===c?"#3b82f6":"#f1f5f9",ac.consultant===c?"white":"#374151","4px 8px")}>{c}</button>)}
+            </div>}
+
+            <div style={{flex:1,overflowY:"auto",padding:11,background:"#e5ddd5",display:"flex",flexDirection:"column",gap:7}}>
+              {(ac.messages||[]).map(msg=>(
+                <div key={msg.id} style={{display:"flex",justifyContent:msg.from==="out"?"flex-end":msg.from==="system"?"center":"flex-start"}}>
+                  {msg.from==="system"?<div style={{background:"rgba(255,255,255,0.7)",borderRadius:7,padding:"2px 9px",fontSize:10,color:"#64748b"}}>{msg.text}</div>:(
+                    <div style={{maxWidth:"72%",background:msg.from==="out"?"#dcf8c6":"white",borderRadius:msg.from==="out"?"10px 0 10px 10px":"0 10px 10px 10px",padding:"7px 10px",boxShadow:"0 1px 2px rgba(0,0,0,0.1)"}}>
+                      {msg.from==="in"&&<div style={{fontSize:9,color:"#25d366",fontWeight:700,marginBottom:1}}>{ac.name?.split(" ")[0]}</div>}
+                      {msg.from==="out"&&<div style={{fontSize:9,color:"#3b82f6",fontWeight:700,marginBottom:1}}>👤 {msg.consultant}</div>}
+                      <div style={{fontSize:12,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{msg.text}</div>
+                      <div style={{fontSize:9,color:"#94a3b8",textAlign:"right",marginTop:2}}>{new Date(msg.ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</div>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {(ac.messages||[]).length===0&&<div style={{textAlign:"center",color:"#94a3b8",marginTop:30,fontSize:12}}>Nenhuma mensagem.</div>}
+              <div ref={msgEnd}/>
+            </div>
+
+            <div style={{background:"white",padding:"8px 11px",borderTop:"1px solid #e2e8f0"}}>
+              <div style={{display:"flex",gap:5,marginBottom:6,flexWrap:"wrap"}}>
+                <button onClick={()=>setShowQM(!showQM)} style={S.b("#f1f5f9","#374151","4px 7px")}>⚡ Respostas</button>
+                <button onClick={()=>{const m=prompt("Simular msg do cliente:");if(m)sendMsg(m,"in");}} style={S.b("#f1f5f9","#374151","4px 7px")}>📥 Simular</button>
+                <button onClick={()=>{setShowSF(true);setSchedF(p=>({...p,contactId:String(ac.id)}));}} style={S.b("#f1f5f9","#374151","4px 7px")}>📅 Agendar</button>
+                <button onClick={()=>openWA(ac,msgIn)} style={S.b("#25d366","#fff","4px 7px")}>📱 {zapi.connected?"Enviar WA":"Abrir WA"}</button>
+              </div>
+              {showQM&&<div style={{background:"#f8fafc",borderRadius:8,padding:6,marginBottom:6,maxHeight:130,overflowY:"auto",display:"flex",flexDirection:"column",gap:3}}>
+                {["Abordagem","Operacional","Fechamento","Reconsulta","Simulação"].map(cat=>{
+                  const msgs=qMsgs.filter(m=>m.category===cat);if(!msgs.length)return null;
+                  return<div key={cat}><div style={{fontSize:9,color:"#94a3b8",fontWeight:700,padding:"2px 0"}}>{cat}</div>
+                    {msgs.map(m=><button key={m.id} onClick={()=>{setMsgIn(m.text.replace("{nome}",ac.name?.split(" ")[0]||""));setShowQM(false);}} style={{textAlign:"left",background:"white",border:"1px solid #e2e8f0",borderRadius:6,padding:"3px 7px",cursor:"pointer",fontSize:11,width:"100%",marginBottom:2}}>
+                      <span style={{fontWeight:600,color:"#3b82f6"}}>⚡ {m.label}</span>
+                      <div style={{color:"#64748b",fontSize:10,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.text}</div>
+                    </button>)}
+                  </div>;
+                })}
+              </div>}
+              <div style={{display:"flex",gap:7}}>
+                <textarea value={msgIn} onChange={e=>setMsgIn(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMsg(msgIn);}}} placeholder="Digite... (Enter=enviar)" style={{...S.i,flex:1,height:50,resize:"none",fontSize:12}}/>
+                <button onClick={()=>sendMsg(msgIn)} style={{...S.b("#25d366","#fff","7px 12px"),fontSize:16,height:50}}>➤</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {ac&&<div style={{width:255,background:"white",borderLeft:"1px solid #e2e8f0",display:"flex",flexDirection:"column",flexShrink:0,overflowY:"auto"}}>
+          <div style={{display:"flex",borderBottom:"1px solid #f1f5f9"}}>
+            {[["detalhes","Detalhes"],["propostas","Propostas"],["docs","Docs"],["agenda","Agenda"]].map(([id,label])=>(
+              <button key={id} onClick={()=>setStab(id)} style={{flex:1,padding:"7px 2px",border:"none",background:"none",cursor:"pointer",fontSize:10,fontWeight:stab===id?700:400,color:stab===id?"#3b82f6":"#64748b",borderBottom:stab===id?"2px solid #3b82f6":"2px solid transparent"}}>{label}</button>
+            ))}
+          </div>
+
+          {stab==="detalhes"&&<div style={{padding:10,display:"flex",flexDirection:"column",gap:7}}>
+            <div style={{textAlign:"center",paddingBottom:8,borderBottom:"1px solid #f1f5f9"}}>
+              <div style={{width:44,height:44,borderRadius:"50%",background:fC(ac.status),display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontWeight:800,fontSize:17,margin:"0 auto 5px"}}>{ac.name?.[0]?.toUpperCase()}</div>
+              <div style={{fontWeight:700,fontSize:13}}>{ac.name}</div>
+              <div style={{fontSize:10,color:"#64748b"}}>{ac.phone}</div>
+              <div style={{display:"flex",gap:4,justifyContent:"center",marginTop:4}}>
+                <span style={{background:fC(ac.status)+"20",color:fC(ac.status),borderRadius:20,padding:"1px 6px",fontSize:9,fontWeight:700}}>{fL(ac.status)}</span>
+                <span style={{background:SC[score(ac)].color+"20",color:SC[score(ac)].color,borderRadius:20,padding:"1px 6px",fontSize:9,fontWeight:700}}>{SC[score(ac)].label}</span>
+              </div>
+            </div>
+            {[["Nome","name","text"],["Telefone","phone","text"],["CPF","cpf","text"],["E-mail","email","email"],["Cidade","city","text"],["Salário (R$)","salary","number"],["Margem (R$)","margin","number"],["Pré-aprovado","preApproved","number"],["Liberado","released","number"],["Retorno","returnDate","date"]].map(([label,field,type])=>(
+              <div key={field}><span style={S.l}>{label}</span><input type={type} value={ac[field]||""} onChange={e=>upC(field,e.target.value)} style={{...S.i,fontSize:11,padding:"4px 6px"}}/></div>
+            ))}
+            <div><span style={S.l}>Produto</span><select value={ac.product} onChange={e=>upC("product",e.target.value)} style={{...S.i,fontSize:11,padding:"4px 6px"}}>{PRODUCTS.map(p=><option key={p}>{p}</option>)}</select></div>
+            <div><span style={S.l}>Banco</span><select value={ac.bank||""} onChange={e=>upC("bank",e.target.value)} style={{...S.i,fontSize:11,padding:"4px 6px"}}><option value="">—</option>{BANKS.map(b=><option key={b}>{b}</option>)}</select></div>
+            <div><span style={S.l}>Origem</span><select value={ac.origin} onChange={e=>upC("origin",e.target.value)} style={{...S.i,fontSize:11,padding:"4px 6px"}}>{ORIGINS.map(o=><option key={o}>{o}</option>)}</select></div>
+            <div style={{display:"flex",gap:5}}>
+              <button onClick={()=>openWA(ac)} style={{...S.b("#25d366","#fff","5px 8px"),flex:1,fontSize:11}}>📱 WA</button>
+              <button onClick={()=>{if(confirm("Excluir?"))setContacts(p=>p.filter(c=>c.id!==ac.id));setAc(null);}} style={{...S.b("#fee2e2","#ef4444","5px 8px"),flex:1,fontSize:11}}>🗑</button>
+            </div>
+          </div>}
+
+          {stab==="propostas"&&<div style={{padding:10}}>
+            <button onClick={()=>{const v=prompt("Valor (R$):");const b=prompt("Banco:");if(v&&b)upC("proposals",[...(ac.proposals||[]),{id:Date.now(),value:parseFloat(v),bank:b,product:ac.product,status:"proposta_enviada",commission:"",createdAt:new Date().toLocaleDateString("pt-BR")}]);}} style={{...S.b("#3b82f6","#fff","5px 8px"),width:"100%",marginBottom:8,fontSize:11}}>+ Nova Proposta</button>
+            {lossM&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
+              <div style={{background:"white",borderRadius:12,padding:18,width:320}}><div style={{fontWeight:700,marginBottom:10}}>❌ Motivo da Perda</div>
+                <select value={lossR} onChange={e=>setLossR(e.target.value)} style={{...S.i,marginBottom:10}}><option value="">Selecione...</option>{LOSS_REASONS.map(r=><option key={r}>{r}</option>)}</select>
+                <div style={{display:"flex",gap:7}}><button onClick={confLoss} style={S.b("#ef4444")}>Confirmar</button><button onClick={()=>setLossM(null)} style={S.b("#f1f5f9","#64748b")}>Cancelar</button></div>
+              </div>
+            </div>}
+            {(ac.proposals||[]).map(p=>(
+              <div key={p.id} style={{background:"#f8fafc",borderRadius:8,padding:8,marginBottom:6,borderLeft:`3px solid ${fC(p.status)}`}}>
+                <div style={{fontWeight:700,fontSize:12}}>R$ {parseFloat(p.value||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
+                <div style={{fontSize:10,color:"#64748b"}}>{p.bank} · {p.createdAt}</div>
+                {p.lossReason&&<div style={{fontSize:10,color:"#ef4444"}}>Motivo: {p.lossReason}</div>}
+                <select value={p.status} onChange={e=>upPS(p.id,e.target.value)} style={{...S.i,fontSize:10,padding:"2px 5px",marginTop:4,color:fC(p.status),fontWeight:600}}>
+                  {FUNNEL.map(f=><option key={f.id} value={f.id}>{f.label}</option>)}
+                </select>
+                <div style={{marginTop:4}}><span style={S.l}>Comissão (R$)</span><input type="number" value={p.commission||""} onChange={e=>upC("proposals",(ac.proposals||[]).map(x=>x.id===p.id?{...x,commission:e.target.value}:x))} style={{...S.i,fontSize:10,padding:"2px 5px"}} placeholder="0,00"/></div>
+              </div>
+            ))}
+            {(ac.proposals||[]).length===0&&<div style={{textAlign:"center",color:"#94a3b8",fontSize:12,padding:14}}>Nenhuma proposta.</div>}
+            <div style={{padding:8,background:"#f0fdf4",borderRadius:7,marginTop:5}}>
+              <div style={{fontSize:10,fontWeight:600}}>💰 Total Comissões</div>
+              <div style={{fontSize:14,fontWeight:800,color:"#10b981"}}>R$ {(ac.proposals||[]).reduce((s,p)=>s+(parseFloat(p.commission)||0),0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
+            </div>
+          </div>}
+
+          {stab==="docs"&&<div style={{padding:10}}>
+            <div style={{fontWeight:600,fontSize:12,marginBottom:8}}>📎 Documentos</div>
+            {["RG/CNH","Comprovante de Residência","Comprovante de Renda","Print de Autorização","Print FGTS","Selfie","Contrato","Comprovante de Pgto"].map(doc=>{
+              const done=(ac.docs||[]).includes(doc);
+              return<div key={doc} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 0",borderBottom:"1px solid #f1f5f9"}}>
+                <input type="checkbox" checked={done} onChange={()=>upC("docs",done?(ac.docs||[]).filter(d=>d!==doc):[...(ac.docs||[]),doc])} style={{width:12,height:12}}/>
+                <span style={{fontSize:11,color:done?"#10b981":"#374151",textDecoration:done?"line-through":"none",flex:1}}>{doc}</span>
+                {done&&<span style={{fontSize:10}}>✅</span>}
+              </div>;
+            })}
+            <div style={{marginTop:8,background:"#f0fdf4",borderRadius:7,padding:7,textAlign:"center"}}>
+              <div style={{fontSize:10,color:"#64748b"}}>Recebidos</div>
+              <div style={{fontSize:17,fontWeight:800,color:"#10b981"}}>{(ac.docs||[]).length}/8</div>
+            </div>
+          </div>}
+
+          {stab==="agenda"&&<div style={{padding:10}}>
+            <button onClick={()=>{const d=prompt("Data (AAAA-MM-DD):");const t=prompt("Tipo:");const n=prompt("Obs:");if(d)upC("agendaItems",[...(ac.agendaItems||[]),{id:Date.now(),date:d,type:t,notes:n,done:false}]);}} style={{...S.b("#3b82f6","#fff","5px 8px"),width:"100%",marginBottom:8,fontSize:11}}>+ Nova Tarefa</button>
+            {(ac.agendaItems||[]).map(a=>(
+              <div key={a.id} style={{background:"#f8fafc",borderRadius:8,padding:8,marginBottom:5,opacity:a.done?0.5:1,borderLeft:`3px solid ${a.date<today&&!a.done?"#ef4444":a.date===today?"#f59e0b":"#3b82f6"}`}}>
+                <div style={{fontWeight:600,fontSize:11,textDecoration:a.done?"line-through":"none"}}>{a.type}</div>
+                <div style={{fontSize:10,color:"#64748b"}}>{a.date}{a.date<today&&!a.done?" ⚠️":""}</div>
+                {a.notes&&<div style={{fontSize:10,color:"#94a3b8"}}>{a.notes}</div>}
+                <div style={{display:"flex",gap:4,marginTop:4}}>
+                  <button onClick={()=>upC("agendaItems",(ac.agendaItems||[]).map(x=>x.id===a.id?{...x,done:!x.done}:x))} style={S.b(a.done?"#f1f5f9":"#10b981",a.done?"#64748b":"white","2px 6px")}>{a.done?"↩":"✓"}</button>
+                  <button onClick={()=>upC("agendaItems",(ac.agendaItems||[]).filter(x=>x.id!==a.id))} style={S.b("#fee2e2","#ef4444","2px 6px")}>🗑</button>
+                </div>
+              </div>
+            ))}
+            {(ac.agendaItems||[]).length===0&&<div style={{textAlign:"center",color:"#94a3b8",fontSize:12,padding:14}}>Nenhuma tarefa.</div>}
+          </div>}
+        </div>}
+      </>}
+
+      {/* DASHBOARD */}
+      {screen==="dashboard"&&<div style={{flex:1,overflowY:"auto",padding:16}}>
+        <div style={{fontWeight:800,fontSize:18,marginBottom:14,color:"#1e293b"}}>📊 Dashboard</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:9,marginBottom:14}}>
+          {[[contacts.length,"👥","Total Clientes","#3b82f6"],[hotL.length,"🔥","Leads Quentes","#ef4444"],[contacts.filter(c=>(c.proposals||[]).some(p=>p.status==="aguardando_docs")).length,"📄","Pend. Docs","#eab308"],[`R$ ${totRel.toLocaleString("pt-BR",{minimumFractionDigits:2})}` ,"💰","Valor Liberado","#059669"],[`R$ ${totComm.toLocaleString("pt-BR",{minimumFractionDigits:2})}`,"✅","Comissão Receb.","#10b981"],[`R$ ${pendComm.toLocaleString("pt-BR",{minimumFractionDigits:2})}`,"⏳","A Receber","#8b5cf6"],[todayAg.length,"📅","Tarefas Hoje","#f97316"],[scheduled.filter(m=>!m.sent).length,"🗓","Msg. Agendadas","#06b6d4"]].map(([v,i,l,c])=>(
+            <div key={l} style={{...S.cd,borderLeft:`4px solid ${c}`,padding:11}}>
+              <div style={{fontSize:18,marginBottom:2}}>{i}</div>
+              <div style={{fontSize:15,fontWeight:800,color:c}}>{v}</div>
+              <div style={{fontSize:10,color:"#64748b"}}>{l}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
+          <div style={S.cd}>
+            <div style={{fontWeight:700,marginBottom:9,fontSize:13}}>🔥 Leads Quentes</div>
+            {hotL.slice(0,5).map(c=>(
+              <div key={c.id} onClick={()=>{setAc(c);setScreen("chat");}} style={{display:"flex",alignItems:"center",gap:7,padding:"4px 0",borderBottom:"1px solid #f1f5f9",cursor:"pointer"}}>
+                <div style={{width:26,height:26,borderRadius:"50%",background:"#ef4444",display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontWeight:700,fontSize:11}}>{c.name?.[0]}</div>
+                <div style={{flex:1}}><div style={{fontSize:11,fontWeight:600}}>{c.name}</div><div style={{fontSize:10,color:"#64748b"}}>{c.product?.split("/")[0].trim()}</div></div>
+                <button onClick={e=>{e.stopPropagation();openWA(c);}} style={S.b("#25d366","#fff","2px 6px")}>📱</button>
+              </div>
+            ))}
+            {hotL.length===0&&<div style={{color:"#94a3b8",fontSize:11}}>Nenhum lead quente.</div>}
+          </div>
+          <div style={S.cd}>
+            <div style={{fontWeight:700,marginBottom:9,fontSize:13}}>📣 Origem dos Leads</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+              {ORIGINS.map(o=>{const count=contacts.filter(c=>c.origin===o).length;if(!count)return null;return<div key={o} style={{background:(OC[o]||"#94a3b8")+"18",borderLeft:`2px solid ${OC[o]||"#94a3b8"}`,borderRadius:5,padding:"3px 7px",minWidth:65}}><div style={{fontSize:9,fontWeight:700,color:OC[o]||"#64748b"}}>{o}</div><div style={{fontSize:14,fontWeight:800}}>{count}</div></div>;})}
+              {contacts.length===0&&<span style={{color:"#94a3b8",fontSize:11}}>Sem dados.</span>}
+            </div>
+          </div>
+          <div style={S.cd}>
+            <div style={{fontWeight:700,marginBottom:9,fontSize:13}}>📋 Funil</div>
+            {FUNNEL.map(f=>{const count=allP.filter(p=>p.status===f.id).length;return<div key={f.id} style={{display:"flex",alignItems:"center",gap:5,marginBottom:3}}><div style={{width:6,height:6,borderRadius:"50%",background:f.color}}/><div style={{fontSize:11,flex:1}}>{f.label}</div><div style={{fontWeight:700,fontSize:11,color:f.color}}>{count}</div></div>;})}
+          </div>
+        </div>
+      </div>}
+
+      {/* HIGIENIZAÇÃO */}
+      {screen==="higienizacao"&&<div style={{flex:1,overflowY:"auto",padding:16}}>
+        <div style={{fontWeight:800,fontSize:18,marginBottom:14,color:"#1e293b"}}>🔍 Higienização de Saldo</div>
+        <div style={{...S.cd,marginBottom:12}}>
+          <div style={{display:"flex",gap:6,marginBottom:9,flexWrap:"wrap"}}>
+            {[["Todos",contacts.map(c=>c.id),"#3b82f6"],["FGTS",contacts.filter(c=>c.product?.includes("FGTS")).map(c=>c.id),"#10b981"],["CLT",contacts.filter(c=>c.product?.includes("CLT")).map(c=>c.id),"#6366f1"],["SIAPE",contacts.filter(c=>c.product?.includes("SIAPE")).map(c=>c.id),"#8b5cf6"]].map(([label,ids,color])=>(
+              <button key={label} onClick={()=>setSelHig(ids)} style={S.b(color,"#fff","5px 9px")}>{label} ({ids.length})</button>
+            ))}
+            <button onClick={()=>setSelHig([])} style={S.b("#f1f5f9","#64748b","5px 9px")}>Limpar</button>
+          </div>
+          <div style={{maxHeight:170,overflowY:"auto",background:"#f8fafc",borderRadius:8,padding:7,marginBottom:9}}>
+            {contacts.map(c=>(
+              <label key={c.id} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 0",cursor:"pointer",fontSize:11}}>
+                <input type="checkbox" checked={selHig.includes(c.id)} onChange={()=>setSelHig(p=>p.includes(c.id)?p.filter(x=>x!==c.id):[...p,c.id])} style={{width:11,height:11}}/>
+                <span style={{flex:1}}>{c.name}</span>
+                <span style={{color:"#64748b",fontSize:10}}>{c.product?.split("/")[0].trim()}</span>
+                <span style={{color:"#94a3b8",fontSize:10}}>{c.phone}</span>
+              </label>
+            ))}
+            {contacts.length===0&&<div style={{textAlign:"center",color:"#94a3b8",padding:14,fontSize:11}}>Nenhum cliente.</div>}
+          </div>
+          <button onClick={()=>runHig(selHig)} disabled={higL||selHig.length===0} style={{...S.b(higL||selHig.length===0?"#94a3b8":"#2563eb","#fff","9px 14px"),width:"100%"}}>
+            {higL?`⏳ Higienizando ${selHig.length}...`:`🔍 Higienizar ${selHig.length} selecionados`}
+          </button>
+        </div>
+        {higR&&<div style={S.cd}>
+          <div style={{display:"flex",gap:9,marginBottom:9,flexWrap:"wrap"}}>
+            {[["✅ Com saldo",higR.filter(r=>r.has).length,"#10b981"],["❌ Sem saldo",higR.filter(r=>!r.has).length,"#ef4444"],["💰 Total",`R$ ${higR.filter(r=>r.has).reduce((s,r)=>s+r.val,0).toLocaleString("pt-BR",{minimumFractionDigits:2})}`,"#059669"]].map(([l,v,c])=>(
+              <div key={l} style={{background:c+"10",borderRadius:7,padding:"6px 10px"}}><div style={{fontSize:10,color:"#64748b"}}>{l}</div><div style={{fontSize:14,fontWeight:800,color:c}}>{v}</div></div>
+            ))}
+          </div>
+          {higR.map(r=>(
+            <div key={r.id} style={{display:"flex",alignItems:"center",gap:9,padding:"6px 9px",background:"#f8fafc",borderRadius:7,marginBottom:5,borderLeft:`3px solid ${r.has?"#10b981":"#ef4444"}`}}>
+              <div style={{flex:1}}><div style={{fontWeight:600,fontSize:12}}>{r.name}</div><div style={{fontSize:10,color:"#64748b"}}>{r.product} · {r.phone}</div></div>
+              <div style={{fontWeight:700,color:r.has?"#10b981":"#ef4444",fontSize:12}}>{r.status}</div>
+              {r.has&&<div style={{fontWeight:800,color:"#059669",fontSize:12}}>R$ {r.val.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>}
+              {r.has&&<button onClick={()=>{setAc(contacts.find(c=>c.id===r.id));setScreen("chat");}} style={S.b("#3b82f6","#fff","3px 7px")}>💬</button>}
+            </div>
+          ))}
+        </div>}
+      </div>}
+
+      {/* SIMULADOR */}
+      {screen==="simulador"&&<div style={{flex:1,overflowY:"auto",padding:16}}>
+        <div style={{fontWeight:800,fontSize:18,marginBottom:14,color:"#1e293b"}}>🏦 Simulador & Comparador de Bancos</div>
+        <div style={{...S.cd,marginBottom:12}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:9,marginBottom:10}}>
+            <div><span style={S.l}>Valor (R$)</span><input type="number" value={simF.value} onChange={e=>setSimF(p=>({...p,value:e.target.value}))} style={S.i}/></div>
+            <div><span style={S.l}>Produto</span><select value={simF.product} onChange={e=>setSimF(p=>({...p,product:e.target.value}))} style={S.i}>{PRODUCTS.map(x=><option key={x}>{x}</option>)}</select></div>
+          </div>
+          <button onClick={runSim} style={S.b("#2563eb","#fff","9px 16px")}>🔍 Simular em todos os bancos</button>
+        </div>
+        {simR&&<div style={S.cd}>
+          <div style={{fontWeight:700,marginBottom:10,fontSize:13}}>📊 Comparativo — R$ {parseFloat(simR.val).toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+              <thead><tr style={{background:"#f8fafc"}}>{["#","Banco","Taxa a.m.","Prazo","Parcela","Total pago","Ação"].map(h=><th key={h} style={{padding:"6px 9px",textAlign:"left",fontWeight:600,color:"#64748b",fontSize:11}}>{h}</th>)}</tr></thead>
+              <tbody>
+                {simR.res.map((r,i)=>(
+                  <tr key={r.bank} style={{borderBottom:"1px solid #f1f5f9",background:i===0?"#f0fdf4":"white"}}>
+                    <td style={{padding:"6px 9px",fontWeight:700,color:i===0?"#059669":"#64748b"}}>#{i+1}</td>
+                    <td style={{padding:"6px 9px",fontWeight:600}}>{i===0?"🏆 ":""}{r.bank}</td>
+                    <td style={{padding:"6px 9px",color:"#3b82f6",fontWeight:600}}>{r.rate}%</td>
+                    <td style={{padding:"6px 9px"}}>{r.prazo}x</td>
+                    <td style={{padding:"6px 9px",fontWeight:700,color:"#059669"}}>R$ {r.parc.toLocaleString("pt-BR",{minimumFractionDigits:2})}</td>
+                    <td style={{padding:"6px 9px",color:"#64748b"}}>R$ {r.total.toLocaleString("pt-BR",{minimumFractionDigits:2})}</td>
+                    <td style={{padding:"6px 9px"}}><button onClick={()=>{const msg=`💰 Simulação ${r.bank}:\nValor: R$ ${parseFloat(simR.val).toLocaleString("pt-BR",{minimumFractionDigits:2})}\nPrazo: ${r.prazo}x\nParcela: R$ ${r.parc.toLocaleString("pt-BR",{minimumFractionDigits:2})}\nTaxa: ${r.rate}% a.m.`;navigator.clipboard.writeText(msg);}} style={S.b("#6366f1","#fff","3px 7px")}>📋 Copiar</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>}
+        <div style={{...S.cd,marginTop:12}}>
+          <div style={{fontWeight:700,marginBottom:9,fontSize:13}}>📐 Calculadora de Margem</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:9}}>
+            <div><span style={S.l}>Salário líquido (R$)</span><input type="number" value={salary} onChange={e=>setSalary(e.target.value)} style={S.i}/></div>
+            <div><span style={S.l}>Percentual (%)</span><input type="number" value={pct} onChange={e=>setPct(e.target.value)} style={S.i}/></div>
+            <div><span style={S.l}>Margem disponível</span><input readOnly value={salary&&pct?(parseFloat(salary)*parseFloat(pct)/100).toLocaleString("pt-BR",{minimumFractionDigits:2}):"0,00"} style={{...S.i,background:"#f0fdf4",fontWeight:700,color:"#059669"}}/></div>
+          </div>
+        </div>
+      </div>}
+
+      {/* CAMPANHAS */}
+      {screen==="campanhas"&&<div style={{flex:1,overflowY:"auto",padding:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <div style={{fontWeight:800,fontSize:18,color:"#1e293b"}}>📣 Campanhas</div>
+          <button onClick={()=>setShowCF(true)} style={S.b("#3b82f6")}>+ Nova Campanha</button>
+        </div>
+        {showCF&&<div style={{...S.cd,marginBottom:12}}>
+          <div style={{fontWeight:700,marginBottom:10}}>Nova Campanha</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:9}}>
+            <div><span style={S.l}>Nome</span><input value={campF.name} onChange={e=>setCampF(p=>({...p,name:e.target.value}))} style={S.i}/></div>
+            <div><span style={S.l}>Filtro de clientes</span><select value={campF.filter} onChange={e=>setCampF(p=>({...p,filter:e.target.value}))} style={S.i}>
+              <option value="all">Todos os clientes</option>
+              {PRODUCTS.map(p=><option key={p} value={p}>{p}</option>)}
+              {FUNNEL.map(f=><option key={f.id} value={f.id}>{f.label}</option>)}
+            </select></div>
+          </div>
+          <div style={{marginBottom:9}}><span style={S.l}>Mensagem (use {"{nome}"} e {"{produto}"})</span><textarea value={campF.message} onChange={e=>setCampF(p=>({...p,message:e.target.value}))} style={{...S.i,height:70,resize:"vertical"}} placeholder="Olá {nome}! Temos uma novidade de {produto} para você..."/></div>
+          <div style={{marginBottom:9}}><span style={S.l}>Agendar para (opcional)</span><input type="datetime-local" value={campF.scheduledAt} onChange={e=>setCampF(p=>({...p,scheduledAt:e.target.value}))} style={S.i}/></div>
+          <div style={{display:"flex",gap:7}}><button onClick={saveCamp} style={S.b("#10b981")}>💾 Salvar</button><button onClick={()=>setShowCF(false)} style={S.b("#f1f5f9","#64748b")}>Cancelar</button></div>
+        </div>}
+        <div style={{display:"grid",gap:9}}>
+          {campaigns.length===0&&<div style={{...S.cd,textAlign:"center",color:"#94a3b8",padding:36}}>Nenhuma campanha criada.</div>}
+          {campaigns.map(camp=>(
+            <div key={camp.id} style={S.cd}>
+              <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:14}}>{camp.name}</div>
+                  <div style={{fontSize:11,color:"#64748b",marginTop:1}}>{camp.filter==="all"?"Todos":camp.filter} · {camp.createdAt}</div>
+                  <div style={{fontSize:11,color:"#374151",marginTop:3,background:"#f8fafc",padding:"4px 7px",borderRadius:5}}>{camp.message?.slice(0,70)}...</div>
+                </div>
+                <div style={{textAlign:"center"}}><div style={{fontSize:10,color:"#94a3b8"}}>Total</div><div style={{fontSize:18,fontWeight:800}}>{camp.total}</div></div>
+                <div style={{textAlign:"center"}}><div style={{fontSize:10,color:"#94a3b8"}}>Enviados</div><div style={{fontSize:18,fontWeight:800,color:"#10b981"}}>{camp.sent}</div></div>
+                <span style={{background:camp.status==="concluída"?"#dcfce7":camp.status==="enviando"?"#fef3c7":"#f1f5f9",color:camp.status==="concluída"?"#16a34a":camp.status==="enviando"?"#d97706":"#64748b",borderRadius:6,padding:"3px 8px",fontSize:11,fontWeight:600}}>{camp.status}</span>
+                <div style={{display:"flex",gap:5}}>
+                  {camp.status==="rascunho"&&<button onClick={()=>sendCamp(camp)} style={S.b("#25d366")}>📤 Enviar</button>}
+                  <button onClick={()=>{if(confirm("Excluir?"))setCampaigns(p=>p.filter(c=>c.id!==camp.id));}} style={S.b("#fee2e2","#ef4444","5px 8px")}>🗑</button>
+                </div>
+              </div>
+              {camp.status==="enviando"&&<div style={{marginTop:8}}>
+                <div style={{height:5,background:"#f1f5f9",borderRadius:3}}><div style={{height:"100%",width:`${camp.total?Math.round((camp.sent/camp.total)*100):0}%`,background:"#10b981",borderRadius:3,transition:"width 0.3s"}}/></div>
+              </div>}
+            </div>
+          ))}
+        </div>
+      </div>}
+
+      {/* FLUXOS */}
+      {screen==="fluxos"&&<div style={{flex:1,overflowY:"auto",padding:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <div style={{fontWeight:800,fontSize:18,color:"#1e293b"}}>🔀 Fluxos de Atendimento</div>
+          <div style={{display:"flex",gap:7}}>
+            <button onClick={()=>callAI("fluxo")} style={S.b("#7c3aed")}>✨ IA</button>
+            <button onClick={()=>{const n=prompt("Nome do fluxo:");if(n)setFlows(p=>[...p,{id:Date.now(),name:n,nodes:[{id:"start",type:"start",text:"Olá! Bem-vindo!\n1️⃣ FGTS\n2️⃣ CLT\n3️⃣ Servidor\n4️⃣ Consultor"}]}]);}} style={S.b("#3b82f6")}>+ Novo</button>
+          </div>
+        </div>
+        {aiResp&&screen==="fluxos"&&<div style={{...S.cd,marginBottom:12,background:"#f5f3ff"}}>
+          <div style={{fontWeight:700,marginBottom:6}}>✨ Fluxo gerado pela IA:</div>
+          <div style={{fontSize:13,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{aiResp}</div>
+          <button onClick={()=>setAiResp("")} style={{...S.b("#f1f5f9","#64748b","4px 8px"),marginTop:8}}>Fechar</button>
+        </div>}
+        <div style={{display:"grid",gridTemplateColumns:"240px 1fr",gap:12}}>
+          <div>
+            {flows.map(f=>(
+              <div key={f.id} onClick={()=>setAFlow(f)} style={{...S.cd,cursor:"pointer",marginBottom:7,border:aFlow?.id===f.id?"2px solid #3b82f6":"1px solid #f1f5f9"}}>
+                <div style={{fontWeight:600,fontSize:13}}>{f.name}</div>
+                <div style={{fontSize:11,color:"#64748b"}}>{f.nodes?.length||0} nós</div>
+              </div>
+            ))}
+          </div>
+          {aFlow&&<div style={S.cd}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div style={{fontWeight:700,fontSize:14}}>🔀 {aFlow.name}</div>
+              <button onClick={()=>{const node={id:Date.now(),type:newNode.type,text:newNode.text};const u={...aFlow,nodes:[...(aFlow.nodes||[]),node]};setFlows(p=>p.map(f=>f.id===aFlow.id?u:f));setAFlow(u);setNewNode({type:"message",text:"" });}} style={S.b("#10b981")}>+ Nó</button>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10,background:"#f8fafc",padding:9,borderRadius:8}}>
+              <div><span style={S.l}>Tipo</span><select value={newNode.type} onChange={e=>setNewNode(p=>({...p,type:e.target.value}))} style={S.i}>{[["start","🟢 Início"],["message","💬 Mensagem"],["condition","🔀 Condição"],["human","👤 Humano"],["end","🔴 Fim"]].map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></div>
+              <div><span style={S.l}>Texto</span><input value={newNode.text} onChange={e=>setNewNode(p=>({...p,text:e.target.value}))} style={S.i} placeholder="Mensagem..."/></div>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:7}}>
+              {(aFlow.nodes||[]).map(node=>{
+                const tc={start:{color:"#10b981",icon:"🟢"},message:{color:"#3b82f6",icon:"💬"},condition:{color:"#f59e0b",icon:"🔀"},human:{color:"#8b5cf6",icon:"👤"},end:{color:"#ef4444",icon:"🔴"}}[node.type]||{color:"#3b82f6",icon:"💬"};
+                return<div key={node.id} style={{display:"flex",alignItems:"flex-start",gap:9,padding:"7px 9px",background:"#f8fafc",borderRadius:8,borderLeft:`3px solid ${tc.color}`}}>
+                  <span style={{fontSize:15}}>{tc.icon}</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:9,color:tc.color,fontWeight:700,marginBottom:2}}>{node.type.toUpperCase()}</div>
+                    <textarea value={node.text} onChange={e=>{const nodes=(aFlow.nodes||[]).map(n=>n.id===node.id?{...n,text:e.target.value}:n);const u={...aFlow,nodes};setFlows(p=>p.map(f=>f.id===aFlow.id?u:f));setAFlow(u);}} style={{...S.i,height:46,resize:"vertical",fontSize:11}}/>
+                  </div>
+                  <button onClick={()=>{const nodes=(aFlow.nodes||[]).filter(n=>n.id!==node.id);const u={...aFlow,nodes};setFlows(p=>p.map(f=>f.id===aFlow.id?u:f));setAFlow(u);}} style={S.b("#fee2e2","#ef4444","3px 6px")}>🗑</button>
+                </div>;
+              })}
+            </div>
+          </div>}
+        </div>
+      </div>}
+
+      {/* AGENDADAS */}
+      {screen==="agendadas"&&<div style={{flex:1,overflowY:"auto",padding:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <div style={{fontWeight:800,fontSize:18,color:"#1e293b"}}>📅 Mensagens Agendadas</div>
+          <button onClick={()=>setShowSF(true)} style={S.b("#3b82f6")}>+ Agendar</button>
+        </div>
+        {showSF&&<div style={{...S.cd,marginBottom:12}}>
+          <div style={{fontWeight:700,marginBottom:10}}>Nova Mensagem Agendada</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:9,marginBottom:9}}>
+            <div><span style={S.l}>Cliente</span><select value={schedF.contactId} onChange={e=>setSchedF(p=>({...p,contactId:e.target.value}))} style={S.i}><option value="">Selecione...</option>{contacts.map(c=><option key={c.id} value={String(c.id)}>{c.name}</option>)}</select></div>
+            <div><span style={S.l}>Tipo</span><select value={schedF.type} onChange={e=>setSchedF(p=>({...p,type:e.target.value}))} style={S.i}>{["Lembrete","Follow-up","Reconsulta","Reativação","Pós-venda","Outro"].map(x=><option key={x}>{x}</option>)}</select></div>
+            <div><span style={S.l}>Data e hora</span><input type="datetime-local" value={schedF.scheduledAt} onChange={e=>setSchedF(p=>({...p,scheduledAt:e.target.value}))} style={S.i}/></div>
+          </div>
+          <div style={{marginBottom:9}}><span style={S.l}>Mensagem (use {"{nome}"})</span><textarea value={schedF.message} onChange={e=>setSchedF(p=>({...p,message:e.target.value}))} style={{...S.i,height:60,resize:"vertical"}} placeholder="Olá {nome}! Passando para..."/></div>
+          <div style={{display:"flex",gap:7}}>
+            <button onClick={()=>{if(!schedF.contactId||!schedF.message||!schedF.scheduledAt)return alert("Preencha todos os campos");setScheduled(p=>[...p,{...schedF,id:Date.now(),sent:false,createdAt:Date.now()}]);setSchedF({contactId:"",message:"",scheduledAt:"",type:"Lembrete"});setShowSF(false);}} style={S.b("#10b981")}>💾 Agendar</button>
+            <button onClick={()=>setShowSF(false)} style={S.b("#f1f5f9","#64748b")}>Cancelar</button>
+          </div>
+        </div>}
+        <div style={{display:"grid",gap:7}}>
+          {scheduled.length===0&&<div style={{...S.cd,textAlign:"center",color:"#94a3b8",padding:36}}>Nenhuma mensagem agendada.</div>}
+          {[...scheduled].sort((a,b)=>new Date(a.scheduledAt)-new Date(b.scheduledAt)).map(m=>{
+            const c=contacts.find(x=>String(x.id)===String(m.contactId));
+            const isPast=new Date(m.scheduledAt)<new Date()&&!m.sent;
+            return<div key={m.id} style={{...S.cd,borderLeft:`4px solid ${m.sent?"#10b981":isPast?"#ef4444":"#3b82f6"}`,padding:11}}>
+              <div style={{display:"flex",alignItems:"center",gap:9,flexWrap:"wrap"}}>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:13}}>{m.type} — {c?.name||"?"}</div>
+                  <div style={{fontSize:11,color:"#64748b"}}>📅 {new Date(m.scheduledAt).toLocaleString("pt-BR")}{isPast&&" ⚠️"}</div>
+                  <div style={{fontSize:11,color:"#374151",marginTop:2,background:"#f8fafc",padding:"3px 6px",borderRadius:4}}>{m.message?.slice(0,70)}...</div>
+                </div>
+                {m.sent?<span style={{background:"#dcfce7",color:"#16a34a",borderRadius:6,padding:"3px 8px",fontSize:11,fontWeight:600}}>✅ Enviado</span>:(
+                  <div style={{display:"flex",gap:5}}>
+                    <button onClick={()=>{if(c)openWA(c,m.message.replace("{nome}",c.name?.split(" ")[0]||""));setScheduled(p=>p.map(x=>x.id===m.id?{...x,sent:true}:x));}} style={S.b("#25d366","#fff","5px 9px")}>📱 Enviar</button>
+                    <button onClick={()=>{if(confirm("Excluir?"))setScheduled(p=>p.filter(x=>x.id!==m.id));}} style={S.b("#fee2e2","#ef4444","5px 7px")}>🗑</button>
+                  </div>
+                )}
+              </div>
+            </div>;
+          })}
+        </div>
+      </div>}
+
+      {/* MENSAGENS */}
+      {screen==="mensagens"&&<div style={{flex:1,overflowY:"auto",padding:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <div style={{fontWeight:800,fontSize:18,color:"#1e293b"}}>⚡ Mensagens Pré-Prontas</div>
+          <button onClick={()=>{const label=prompt("Nome:");const cat=prompt("Categoria (Abordagem/Operacional/Fechamento/Reconsulta/Simulação):");const text=prompt("Texto (use {nome}, {produto}):");if(label&&text)setQMsgs(p=>[...p,{id:Date.now(),label,category:cat||"Outro",text}]);}} style={S.b("#3b82f6")}>+ Nova</button>
+        </div>
+        {["Abordagem","Operacional","Fechamento","Reconsulta","Simulação","Outro"].map(cat=>{
+          const msgs=qMsgs.filter(m=>m.category===cat);if(!msgs.length)return null;
+          return<div key={cat} style={{marginBottom:14}}>
+            <div style={{fontWeight:700,fontSize:13,marginBottom:7,color:"#374151"}}>📁 {cat}</div>
+            <div style={{display:"grid",gap:7}}>
+              {msgs.map(m=>(
+                <div key={m.id} style={S.cd}>
+                  <div style={{display:"flex",alignItems:"flex-start",gap:9}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>⚡ {m.label}</div>
+                      <div style={{fontSize:12,color:"#374151",background:"#f8fafc",padding:"7px 9px",borderRadius:7,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{m.text}</div>
+                    </div>
+                    <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                      <button onClick={()=>navigator.clipboard.writeText(m.text)} style={S.b("#3b82f6","#fff","4px 8px")}>📋 Copiar</button>
+                      <button onClick={()=>{const ci=prompt("Número do cliente:\n"+contacts.filter(x=>x.phone).map((x,i)=>(i+1)+". "+x.name).join("\n"));if(ci){const cl=contacts.filter(x=>x.phone)[parseInt(ci)-1];if(cl)openWA(cl,m.text.replace("{nome}",cl.name?.split(" ")[0]||"").replace("{produto}",cl.product||"")); }}} style={S.b("#25d366","#fff","4px 8px")}>📱 Enviar</button>
+                      <button onClick={()=>{if(confirm("Excluir?"))setQMsgs(p=>p.filter(x=>x.id!==m.id));}} style={S.b("#fee2e2","#ef4444","4px 7px")}>🗑</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>;
+        })}
+      </div>}
+
+      {/* RELATÓRIOS */}
+      {screen==="relatorios"&&<div style={{flex:1,overflowY:"auto",padding:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:7}}>
+          <div style={{fontWeight:800,fontSize:18,color:"#1e293b"}}>📈 Relatórios</div>
+          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+            {[["day","Hoje"],["week","Semana"],["month","Mês"],["year","Ano"]].map(([id,l])=>(
+              <button key={id} onClick={()=>setRFilt(id)} style={S.b(rFilt===id?"#2563eb":"#f1f5f9",rFilt===id?"white":"#64748b","5px 9px")}>{l}</button>
+            ))}
+            <button onClick={exportCSV} style={S.b("#10b981","#fff","5px 9px")}>⬇️ Exportar CSV</button>
+          </div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:9,marginBottom:14}}>
+          {[[filPeriod(contacts).length,"👥","Novos Clientes","#3b82f6"],[filPeriod(allP).length,"📤","Propostas","#f97316"],[allP.filter(p=>p.status==="pago").length,"✅","Fechados","#10b981"],[`R$ ${totRel.toLocaleString("pt-BR",{minimumFractionDigits:2})}`,"💰","Valor Liberado","#059669"]].map(([v,i,l,c])=>(
+            <div key={l} style={{...S.cd,borderLeft:`4px solid ${c}`,padding:11}}>
+              <div style={{fontSize:18}}>{i}</div><div style={{fontSize:14,fontWeight:800,color:c}}>{v}</div><div style={{fontSize:10,color:"#64748b"}}>{l}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+          <div style={S.cd}>
+            <div style={{fontWeight:700,marginBottom:9,fontSize:13}}>📊 Conversão por Produto</div>
+            {PRODUCTS.map(prod=>{const total=allP.filter(p=>p.product===prod).length;const won=allP.filter(p=>p.product===prod&&p.status==="pago").length;const pct=total?Math.round((won/total)*100):0;return total>0?<div key={prod} style={{marginBottom:8}}><div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:2}}><span>{prod.split("/")[0].trim()}</span><span style={{fontWeight:700}}>{won}/{total} ({pct}%)</span></div><div style={{height:5,background:"#f1f5f9",borderRadius:3}}><div style={{height:"100%",width:`${pct}%`,background:"#10b981",borderRadius:3}}/></div></div>:null;})}
+            {allP.length===0&&<div style={{color:"#94a3b8",fontSize:11}}>Sem dados.</div>}
+          </div>
+          <div style={S.cd}>
+            <div style={{fontWeight:700,marginBottom:9,fontSize:13}}>❌ Motivos de Perda</div>
+            {LOSS_REASONS.filter(r=>allP.some(p=>p.lossReason===r)).map(r=>(
+              <div key={r} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:"1px solid #f1f5f9"}}>
+                <span style={{fontSize:11}}>{r}</span><span style={{fontWeight:700,color:"#ef4444",fontSize:12}}>{allP.filter(p=>p.lossReason===r).length}</span>
+              </div>
+            ))}
+            {allP.filter(p=>p.status==="perdido").length===0&&<div style={{color:"#94a3b8",fontSize:11}}>Sem perdas.</div>}
+          </div>
+        </div>
+        <div style={S.cd}>
+          <div style={{fontWeight:700,marginBottom:9,fontSize:13}}>📋 Histórico de Conversas</div>
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+              <thead><tr style={{background:"#f8fafc"}}>{["Cliente","Produto","Status","Origem","Consultor","Entrada","Último Contato","Pré-aprovado"].map(h=><th key={h} style={{padding:"5px 7px",textAlign:"left",fontWeight:600,color:"#64748b"}}>{h}</th>)}</tr></thead>
+              <tbody>
+                {filPeriod(contacts).map(c=>(
+                  <tr key={c.id} style={{borderBottom:"1px solid #f1f5f9"}}>
+                    <td style={{padding:"5px 7px",fontWeight:600}}>{c.name}</td>
+                    <td style={{padding:"5px 7px",color:"#64748b"}}>{c.product?.split("/")[0].trim()}</td>
+                    <td style={{padding:"5px 7px"}}><span style={{background:fC(c.status)+"20",color:fC(c.status),borderRadius:4,padding:"1px 5px",fontSize:9,fontWeight:600}}>{fL(c.status)}</span></td>
+                    <td style={{padding:"5px 7px",color:"#64748b"}}>{c.origin}</td>
+                    <td style={{padding:"5px 7px",color:"#64748b"}}>{c.consultant}</td>
+                    <td style={{padding:"5px 7px",color:"#64748b"}}>{c.createdAt?new Date(c.createdAt).toLocaleDateString("pt-BR"):"—"}</td>
+                    <td style={{padding:"5px 7px",color:"#64748b"}}>{c.lastMsgTs?new Date(c.lastMsgTs).toLocaleDateString("pt-BR"):"—"}</td>
+                    <td style={{padding:"5px 7px",fontWeight:600,color:"#10b981"}}>{c.preApproved?`R$ ${parseFloat(c.preApproved).toLocaleString("pt-BR",{minimumFractionDigits:2})}`:"—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filPeriod(contacts).length===0&&<div style={{textAlign:"center",color:"#94a3b8",padding:16,fontSize:11}}>Sem dados no período.</div>}
+          </div>
+        </div>
+      </div>}
+
+      {/* CHAT EQUIPE */}
+      {screen==="teamchat"&&<div style={{flex:1,display:"flex",flexDirection:"column"}}>
+        <div style={{background:"white",padding:"11px 16px",borderBottom:"1px solid #e2e8f0",display:"flex",alignItems:"center",gap:9}}>
+          <div style={{fontWeight:800,fontSize:15,color:"#1e293b"}}>👥 Chat Interno da Equipe</div>
+          <div style={{display:"flex",gap:4}}>
+            {CONSULTANTS.map(c=><div key={c} title={c} style={{width:26,height:26,borderRadius:"50%",background:"#10b981",display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontWeight:700,fontSize:10}}>{c[0]}</div>)}
+          </div>
+        </div>
+        <div style={{flex:1,overflowY:"auto",padding:12,background:"#f8fafc",display:"flex",flexDirection:"column",gap:7}}>
+          {teamChat.length===0&&<div style={{textAlign:"center",color:"#94a3b8",marginTop:36,fontSize:12}}>Nenhuma mensagem. Comece a conversa! 👋</div>}
+          {teamChat.map(msg=>{
+            const isMe=msg.from===consultant;
+            return<div key={msg.id} style={{display:"flex",justifyContent:isMe?"flex-end":"flex-start",gap:7,alignItems:"flex-end"}}>
+              {!isMe&&<div style={{width:26,height:26,borderRadius:"50%",background:"#3b82f6",display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontWeight:700,fontSize:11,flexShrink:0}}>{msg.from[0]}</div>}
+              <div style={{maxWidth:"65%",background:isMe?"#dcf8c6":"white",borderRadius:isMe?"10px 0 10px 10px":"0 10px 10px 10px",padding:"7px 10px",boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+                {!isMe&&<div style={{fontSize:9,color:"#3b82f6",fontWeight:700,marginBottom:1}}>{msg.from}</div>}
+                <div style={{fontSize:12,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{msg.text}</div>
+                <div style={{fontSize:9,color:"#94a3b8",textAlign:"right",marginTop:2}}>{new Date(msg.ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</div>
+              </div>
+              {isMe&&<div style={{width:26,height:26,borderRadius:"50%",background:"#10b981",display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontWeight:700,fontSize:11,flexShrink:0}}>{consultant[0]}</div>}
+            </div>;
+          })}
+          <div ref={tcEnd}/>
+        </div>
+        <div style={{background:"white",padding:"9px 12px",borderTop:"1px solid #e2e8f0",display:"flex",gap:7}}>
+          <textarea value={tMsg} onChange={e=>setTMsg(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();if(!tMsg.trim())return;setTeamChat(p=>[...p,{id:Date.now(),from:consultant,text:tMsg.trim(),ts:Date.now()}]);setTMsg("");}}} placeholder="Mensagem para a equipe... (Enter=enviar)" style={{...S.i,flex:1,height:50,resize:"none",fontSize:12}}/>
+          <button onClick={()=>{if(!tMsg.trim())return;setTeamChat(p=>[...p,{id:Date.now(),from:consultant,text:tMsg.trim(),ts:Date.now()}]);setTMsg("");}} style={{...S.b("#3b82f6","#fff","7px 12px"),fontSize:16,height:50}}>➤</button>
+        </div>
+      </div>}
+
+      {/* Z-API */}
+      {screen==="zapi"&&<div style={{flex:1,overflowY:"auto",padding:16}}>
+        <div style={{fontWeight:800,fontSize:18,marginBottom:14,color:"#1e293b"}}>📡 Configuração Z-API</div>
+        <div style={{...S.cd,marginBottom:12,background:zapi.connected?"#f0fdf4":"#fef3c7",border:`1px solid ${zapi.connected?"#86efac":"#fcd34d"}`}}>
+          <div style={{fontWeight:700,color:zapi.connected?"#15803d":"#92400e",fontSize:14}}>{zapi.connected?"✅ WhatsApp Conectado!":"📡 Não Conectado"}</div>
+          <div style={{fontSize:12,color:zapi.connected?"#16a34a":"#b45309",marginTop:3}}>{zapi.connected?`Número: ${zapi.phone} — mensagens integradas ao CRM`:"Configure suas credenciais abaixo"}</div>
+        </div>
+        <div style={{...S.cd,marginBottom:12}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(190px,1fr))",gap:9,marginBottom:10}}>
+            <div><span style={S.l}>Instance ID</span><input value={zapi.instanceId} onChange={e=>setZapi(p=>({...p,instanceId:e.target.value}))} style={S.i} placeholder="3F4F61ED3B4D..."/></div>
+            <div><span style={S.l}>Token</span><input type="password" value={zapi.token} onChange={e=>setZapi(p=>({...p,token:e.target.value}))} style={S.i} placeholder="34EEA63A11C8..."/></div>
+            <div><span style={S.l}>Seu número (com DDD)</span><input value={zapi.phone} onChange={e=>setZapi(p=>({...p,phone:e.target.value}))} style={S.i} placeholder="48999998888"/></div>
+          </div>
+          <div style={{display:"flex",gap:7}}>
+            <button onClick={chkZapi} style={S.b("#2563eb")}>🔍 Verificar</button>
+            <button onClick={()=>sendZ(zapi.phone,"✅ Teste CorbanPRO!")} disabled={!zapi.connected} style={S.b(zapi.connected?"#10b981":"#94a3b8")}>📤 Testar</button>
+            <button onClick={()=>setZapi(p=>({...p,connected:false}))} style={S.b("#f1f5f9","#64748b")}>Desconectar</button>
+          </div>
+        </div>
+        <div style={S.cd}>
+          <div style={{fontWeight:700,marginBottom:7}}>📋 Log</div>
+          <div style={{maxHeight:170,overflowY:"auto",display:"flex",flexDirection:"column",gap:3}}>
+            {zapiLogs.length===0&&<div style={{color:"#94a3b8",fontSize:11,textAlign:"center",padding:14}}>Sem atividades.</div>}
+            {zapiLogs.map((l,i)=><div key={i} style={{fontSize:10,padding:"3px 6px",background:"#f8fafc",borderRadius:4,display:"flex",gap:7}}><span style={{color:"#94a3b8"}}>{new Date(l.ts).toLocaleTimeString("pt-BR")}</span><span>{l.msg}</span></div>)}
+          </div>
+        </div>
+      </div>}
+
+      {/* BANCOS */}
+      {screen==="bancos"&&<div style={{flex:1,overflowY:"auto",padding:16}}>
+        <div style={{fontWeight:800,fontSize:18,marginBottom:14,color:"#1e293b"}}>🔐 Credenciais Bancárias</div>
+        <div style={{background:"#fef3c7",border:"1px solid #fcd34d",borderRadius:9,padding:10,marginBottom:12,fontSize:11,color:"#92400e"}}>🔐 Credenciais salvas apenas no navegador. Não compartilhe este dispositivo sem limpar os dados.</div>
+        <button onClick={()=>{const bank=prompt("Banco:");const login=prompt("Login:");const password=prompt("Senha:");const notes=prompt("Observações:");if(bank&&login)setCreds(p=>[...p,{id:Date.now(),bank,login,password,notes}]);}} style={{...S.b("#2563eb","#fff","7px 12px"),marginBottom:10}}>+ Adicionar Banco</button>
+        <div style={{display:"grid",gap:7}}>
+          {creds.map(c=>(
+            <div key={c.id} style={{...S.cd,display:"flex",alignItems:"center",gap:9,padding:11}}>
+              <div style={{width:38,height:38,borderRadius:8,background:"#1e40af",display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontWeight:800,fontSize:11,flexShrink:0}}>{c.bank?.slice(0,3).toUpperCase()}</div>
+              <div style={{flex:1}}><div style={{fontWeight:700,fontSize:13}}>{c.bank}</div><div style={{fontSize:11,color:"#64748b"}}>Login: {c.login}</div>{c.notes&&<div style={{fontSize:10,color:"#94a3b8"}}>{c.notes}</div>}</div>
+              <span style={{background:"#dcfce7",color:"#16a34a",borderRadius:5,padding:"2px 7px",fontSize:10,fontWeight:600}}>✅ Config.</span>
+              <span style={{background:"#fef3c7",color:"#d97706",borderRadius:5,padding:"2px 7px",fontSize:10}}>🔄 RPA em breve</span>
+              <button onClick={()=>{if(confirm("Excluir?"))setCreds(p=>p.filter(x=>x.id!==c.id));}} style={S.b("#fee2e2","#ef4444","4px 7px")}>🗑</button>
+            </div>
+          ))}
+          {creds.length===0&&<div style={{textAlign:"center",color:"#94a3b8",padding:32}}>Nenhum banco cadastrado.</div>}
+        </div>
+      </div>}
+
+      {/* MODAL NOVO CONTATO */}
+      {showNC&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
+        <div style={{background:"white",borderRadius:14,padding:20,width:400,maxWidth:"90vw",maxHeight:"85vh",overflowY:"auto"}}>
+          <div style={{fontWeight:700,fontSize:15,marginBottom:13}}>➕ Novo Contato</div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {[["Nome *","name","text"],["Telefone/WA *","phone","text"],["CPF","cpf","text"],["E-mail","email","email"],["Cidade","city","text"],["Salário (R$)","salary","number"],["Margem (R$)","margin","number"]].map(([label,field,type])=>(
+              <div key={field}><span style={S.l}>{label}</span><input type={type} value={cf[field]||""} onChange={e=>setCf(p=>({...p,[field]:e.target.value}))} style={S.i}/></div>
+            ))}
+            <div><span style={S.l}>Produto</span><select value={cf.product} onChange={e=>setCf(p=>({...p,product:e.target.value}))} style={S.i}>{PRODUCTS.map(x=><option key={x}>{x}</option>)}</select></div>
+            <div><span style={S.l}>Origem</span><select value={cf.origin} onChange={e=>setCf(p=>({...p,origin:e.target.value}))} style={S.i}>{ORIGINS.map(x=><option key={x}>{x}</option>)}</select></div>
+            <div><span style={S.l}>Consultor</span><select value={cf.consultant} onChange={e=>setCf(p=>({...p,consultant:e.target.value}))} style={S.i}>{CONSULTANTS.map(x=><option key={x}>{x}</option>)}</select></div>
+          </div>
+          <div style={{display:"flex",gap:7,marginTop:13}}>
+            <button onClick={saveC} style={{...S.b("#10b981","#fff","9px 14px"),flex:1}}>💾 Salvar</button>
+            <button onClick={()=>setShowNC(false)} style={{...S.b("#f1f5f9","#64748b","9px 14px"),flex:1}}>Cancelar</button>
+          </div>
+        </div>
+      </div>}
+
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+</script>
 </body>
 </html>
